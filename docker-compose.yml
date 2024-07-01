@@ -27,16 +27,17 @@ services:
     networks:
       - kafka_network
 
-  mysql:
-    image: quay.io/debezium/example-mysql:${DEBEZIUM_VERSION}
-    ports:
-     - 3306:3306
-    environment:
-     - MYSQL_ROOT_PASSWORD=debezium
-     - MYSQL_USER=mysqluser
-     - MYSQL_PASSWORD=mysqlpw
-    networks:
-      - kafka_network
+  # Test with internal mysql
+  # mysql:
+  #   image: quay.io/debezium/example-mysql:${DEBEZIUM_VERSION}
+  #   ports:
+  #    - 3306:3306
+  #   environment:
+  #    - MYSQL_ROOT_PASSWORD=debezium
+  #    - MYSQL_USER=mysqluser
+  #    - MYSQL_PASSWORD=mysqlpw
+  #   networks:
+  #     - kafka_network
 
   connect:
     image: quay.io/debezium/connect:${DEBEZIUM_VERSION}
@@ -46,12 +47,18 @@ services:
      - 5005:5005
     links:
      - kafka
-     - mysql
+    #  - mysql
     environment:
      - BOOTSTRAP_SERVERS=kafka:9092
      - GROUP_ID=1
      - CONFIG_STORAGE_TOPIC=my_connect_configs
      - OFFSET_STORAGE_TOPIC=my_connect_offsets
+     - CONNECT_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+     - CONNECT_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+     - CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE=false
+     - CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE=false
+    # volumes:
+    #  - ./debezium-connector-jdbc-mysql:/kafka/connect/debezium-connector-jdbc
     networks:
       - kafka_network
 
@@ -67,7 +74,7 @@ services:
       - DYNAMIC_CONFIG_ENABLED=true
       - KAFKA_CLUSTERS_0_AUDIT_TOPICAUDITENABLED=true
       - KAFKA_CLUSTERS_0_AUDIT_CONSOLEAUDITENABLED=true
-      - DYNAMIC_CONFIG_ENABLED='true'
+      - DYNAMIC_CONFIG_ENABLED=true
       - KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME=connect
       - KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS=http://connect:8083
     networks:

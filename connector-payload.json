@@ -1,0 +1,17 @@
+{
+  "name": "oms_logs-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+    "tasks.max": "1",
+    "database.hostname": "mysql",
+    "database.port": "3306",
+    "database.user": "root",
+    "database.password": "root",
+    "database.server.id": "1",
+    "topic.prefix": "oms",
+    "database.include.list": "prep_oms",
+    "table.include.list": "prep_oms.oms_logs",
+    "schema.history.internal.kafka.bootstrap.servers": "kafka:9092",
+    "schema.history.internal.kafka.topic": "schema-changes.oms_logs"
+  }
+}
