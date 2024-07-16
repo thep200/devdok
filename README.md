@@ -19,3 +19,6 @@ Sau khi kết nối thành công connector sẽ public một domaim để chúng
 ## Create connector
 - Để tạo connector sử dụng api được expose từ kafka connect
 > Lưu ý là nếu mysql được đặt ở một network khác thì phải đổi `database.hostname` thành `host.docker.internal`
+
+## Noted
+Vào [docker hub](https://hub.docker.com/) để đọc doc khi tự build file dockek compose file

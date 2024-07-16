@@ -23,6 +23,9 @@ services:
     links:
      - zookeeper
     environment:
+     - BROKER_ID=1
+     - HOST_NAME=kafka
+     - ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
      - ZOOKEEPER_CONNECT=zookeeper:2181
     networks:
       - kafka_network
@@ -49,14 +52,16 @@ services:
      - kafka
     #  - mysql
     environment:
-     - BOOTSTRAP_SERVERS=kafka:9092
      - GROUP_ID=1
-     - CONFIG_STORAGE_TOPIC=my_connect_configs
-     - OFFSET_STORAGE_TOPIC=my_connect_offsets
+     - CONFIG_STORAGE_TOPIC=thep200_connect_configs
+     - OFFSET_STORAGE_TOPIC=thep200_connect_offsets
      - CONNECT_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
      - CONNECT_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
      - CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE=false
      - CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE=false
+     - BOOTSTRAP_SERVERS=kafka:9092
+    #  - HOST_NAME= api bind address
+    #  - ADVERTISED_LISTENERS=PLAINTEXT://connect:8083
     # volumes:
     #  - ./debezium-connector-jdbc-mysql:/kafka/connect/debezium-connector-jdbc
     networks:
