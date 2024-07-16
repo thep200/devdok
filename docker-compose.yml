@@ -19,14 +19,17 @@ services:
   kafka:
     image: quay.io/debezium/kafka:${DEBEZIUM_VERSION}
     ports:
-     - 9092:9092
+     - "9092:9092"
+    #  - "9094:9094"
     links:
      - zookeeper
     environment:
      - BROKER_ID=1
-     - HOST_NAME=kafka
-     - ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
      - ZOOKEEPER_CONNECT=zookeeper:2181
+     - HOST_NAME=kafka
+     - ADVERTISED_HOST_NAME=kafka
+     - ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9092
+     - LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
     networks:
       - kafka_network
 
