@@ -1,89 +1,138 @@
-version: '3.8'
 networks:
-    kafka_network:
+  kafka:
 
 volumes:
-  kafka:
+  Kafka00:
+    driver: local
+  Kafka01:
+    driver: local
+  Kafka02:
     driver: local
 
 services:
-  zookeeper:
-    image: quay.io/debezium/zookeeper:${DEBEZIUM_VERSION}
-    ports:
-     - 2181:2181
-     - 2888:2888
-     - 3888:3888
-    networks:
-      - kafka_network
-
-  kafka:
-    image: quay.io/debezium/kafka:${DEBEZIUM_VERSION}
-    ports:
-     - "9092:9092"
-    #  - "9094:9094"
-    links:
-     - zookeeper
-    environment:
-     - BROKER_ID=1
-     - ZOOKEEPER_CONNECT=zookeeper:2181
-     - HOST_NAME=kafka
-     - ADVERTISED_HOST_NAME=kafka
-     - ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9092
-     - LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
-    networks:
-      - kafka_network
-
-  # Test with internal mysql
-  # mysql:
-  #   image: quay.io/debezium/example-mysql:${DEBEZIUM_VERSION}
-  #   ports:
-  #    - 3306:3306
-  #   environment:
-  #    - MYSQL_ROOT_PASSWORD=debezium
-  #    - MYSQL_USER=mysqluser
-  #    - MYSQL_PASSWORD=mysqlpw
-  #   networks:
-  #     - kafka_network
-
-  connect:
-    image: quay.io/debezium/connect:${DEBEZIUM_VERSION}
-    container_name: connect
-    ports:
-     - 8083:8083
-     - 5005:5005
-    links:
-     - kafka
-    #  - mysql
-    environment:
-     - GROUP_ID=1
-     - CONFIG_STORAGE_TOPIC=thep200_connect_configs
-     - OFFSET_STORAGE_TOPIC=thep200_connect_offsets
-     - CONNECT_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
-     - CONNECT_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
-     - CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE=false
-     - CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE=false
-     - BOOTSTRAP_SERVERS=kafka:9092
-    #  - HOST_NAME= api bind address
-    #  - ADVERTISED_LISTENERS=PLAINTEXT://connect:8083
-    # volumes:
-    #  - ./debezium-connector-jdbc-mysql:/kafka/connect/debezium-connector-jdbc
-    networks:
-      - kafka_network
-
-  uikafka:
-    image: provectuslabs/kafka-ui:latest
+  kafka00:
+    image: bitnami/kafka:${BITNAMI_KAFKA_VERSION}-debian-11-r0
     restart: unless-stopped
-    container_name: uikafka
+    container_name: kafka00
+    ports:
+      - '10000:9094'
+    environment:
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      # KRaft settings
+      - KAFKA_CFG_BROKER_ID=0
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_KRAFT_CLUSTER_ID=HsDBs9l6UUmQq7Y5E6bNlw
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka00:9093,1@kafka01:9093,2@kafka02:9093
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      # Listeners
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka00:9092,EXTERNAL://localhost:10000
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      # Clustering
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
+    networks:
+      - kafka
+    volumes:
+      - "Kafka00:/kafka"
+
+  kafka01:
+    image: bitnami/kafka:${BITNAMI_KAFKA_VERSION}-debian-11-r0
+    restart: unless-stopped
+    container_name: kafka01
+    ports:
+      - '10001:9094'
+    environment:
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      # KRaft settings
+      - KAFKA_CFG_BROKER_ID=1
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_KRAFT_CLUSTER_ID=HsDBs9l6UUmQq7Y5E6bNlw
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka00:9093,1@kafka01:9093,2@kafka02:9093
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      # Listeners
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka01:9092,EXTERNAL://localhost:10001
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      # Clustering
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
+    networks:
+      - kafka
+    volumes:
+      - "Kafka01:/kafka"
+
+  kafka02:
+    image: bitnami/kafka:${BITNAMI_KAFKA_VERSION}-debian-11-r0
+    restart: unless-stopped
+    container_name: kafka02
+    ports:
+      - '10002:9094'
+    environment:
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      # KRaft settings
+      - KAFKA_CFG_BROKER_ID=2
+      - KAFKA_CFG_NODE_ID=2
+      - KAFKA_KRAFT_CLUSTER_ID=HsDBs9l6UUmQq7Y5E6bNlw
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka00:9093,1@kafka01:9093,2@kafka02:9093
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      # Listeners
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka02:9092,EXTERNAL://localhost:10002
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      # Clustering
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
+    networks:
+      - kafka
+    volumes:
+      - "Kafka02:/kafka"
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:${KAFKA_UI_VERSION}
+    restart: unless-stopped
+    container_name: kafka-ui
     ports:
       - '8080:8080'
     environment:
       - KAFKA_CLUSTERS_0_NAME=Local
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka00:9092,kafka01:9092,kafka02:9092
       - DYNAMIC_CONFIG_ENABLED=true
       - KAFKA_CLUSTERS_0_AUDIT_TOPICAUDITENABLED=true
       - KAFKA_CLUSTERS_0_AUDIT_CONSOLEAUDITENABLED=true
-      - DYNAMIC_CONFIG_ENABLED=true
+      - DYNAMIC_CONFIG_ENABLED='true'
       - KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME=connect
-      - KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS=http://connect:8083
+      - KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS=http://kafka-connect:8083
+      #- KAFKA_CLUSTERS_0_METRICS_PORT=9999
     networks:
-      - kafka_network
+      - kafka
+
+  connect:
+    image: quay.io/debezium/connect:${DEBEZIUM_VERSION}
+    container_name: kafka-connect
+    restart: unless-stopped
+    ports:
+      - 8083:8083
+    links:
+      - kafka02
+      - kafka01
+      - kafka00
+    environment:
+      - BOOTSTRAP_SERVERS=kafka00:9092,kafka01:9092,kafka02:9092
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=local_configs
+      - OFFSET_STORAGE_TOPIC=local_offsets
+    networks:
+      - kafka
