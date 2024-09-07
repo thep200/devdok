@@ -132,7 +132,7 @@ services:
     environment:
       - BOOTSTRAP_SERVERS=kafka00:9092,kafka01:9092,kafka02:9092
       - GROUP_ID=1
-      - CONFIG_STORAGE_TOPIC=local_configs
-      - OFFSET_STORAGE_TOPIC=local_offsets
+      - CONFIG_STORAGE_TOPIC=connect_local_configs
+      - OFFSET_STORAGE_TOPIC=connect_local_offsets
     networks:
       - kafka
