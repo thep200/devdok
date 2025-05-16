@@ -1,0 +1,23 @@
+# Kafka Client Configuration Example
+
+# Java Client Example
+bootstrap.servers=127.0.0.1:19092,127.0.0.1:19093
+security.protocol=PLAINTEXT
+
+# Python Client Example (kafka-python)
+# bootstrap_servers = ['127.0.0.1:19092', '127.0.0.1:19093']
+
+# Node.js Client Example (kafkajs)
+/*
+const { Kafka } = require('kafkajs')
+const kafka = new Kafka({
+  clientId: 'my-app',
+  brokers: ['127.0.0.1:19092', '127.0.0.1:19093'],
+})
+*/
+
+# Spring Boot Application Example (application.properties or application.yml)
+# spring.kafka.bootstrap-servers=127.0.0.1:19092,127.0.0.1:19093
+
+# Command-line Tools
+# kafka-topics --bootstrap-server 127.0.0.1:19092 --list
