@@ -1,0 +1,2 @@
+user default on nopass ~* &* +@all
+user thep200 on +@all ~* >root

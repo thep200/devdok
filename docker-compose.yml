@@ -1,16 +1,34 @@
-## Database #####################################################
-## MySQL    #####################################################
-
+## Network #####################################################
 networks:
-  env-internal:
+  internal:
     driver: bridge
 
 services:
+  ## Redis #####################################################
+  redis:
+    restart: always
+    container_name: redis
+    build:
+      context: ./redis
+    volumes:
+      - ${REDIS_DATA_PATH_HOST}/redis:/data
+      - ./redis/redis.conf:/etc/redis/redis.conf
+      - ./redis/users.acl:/etc/redis/users.acl
+    environment:
+      - REDIS_USERNAME=${REDIS_USERNAME}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    command: redis-server /etc/redis/redis.conf
+    ports:
+      - "${REDIS_PORT}:6379"
+    networks:
+      - internal
+
+  ## MySQL    ####################################################
   mysql:
     restart: always
     container_name: mysql
     build:
-      context: ./mysql
+      context: ./database/mysql
       args:
         - MYSQL_VERSION=${MYSQL_VERSION}
     environment:
@@ -25,5 +43,40 @@ services:
     ports:
       - "${MYSQL_PORT}:3306"
     networks:
-      - env-internal
+      - internal
 
+  ## PostgreSQL ###########################################
+  postgres:
+    restart: always
+    container_name: postgres
+    build:
+      context: ./database/postgres
+      args:
+        - POSTGRES_VERSION=${POSTGRES_VERSION}
+    volumes:
+      - ${POSTGRES_DATA_PATH_HOST}/postgres:/var/lib/postgresql/data
+      - ${POSTGRES_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    networks:
+      - internal
+
+  ## MongoDB ###################################################
+  mongo:
+    restart: always
+    build:
+      context: ./database/mongo
+    ports:
+      - "${MONGODB_PORT}:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+    volumes:
+      - ${MONGO_DATA_PATH_HOST}/mongo:/data/db
+      - ${MONGO_DATA_PATH_HOST}/mongo_config:/data/configdb
+    networks:
+      - internal
