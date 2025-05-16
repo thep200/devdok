@@ -1,12 +1,13 @@
-## Network #####################################################
+# Network #####################################################
 networks:
-  internal:
-    driver: bridge
+  # Run make net-shared to create the shared network first
   shared:
     external: true
+  internal:
+    driver: bridge
 
 services:
-  ## Redis #####################################################
+  # Redis #####################################################
   redis:
     restart: always
     container_name: redis
@@ -26,7 +27,7 @@ services:
       - internal
       - shared
 
-  ## MySQL    ####################################################
+  # MySQL ###############################################
   mysql:
     restart: always
     container_name: mysql
@@ -49,7 +50,7 @@ services:
       - internal
       - shared
 
-  ## PostgreSQL ###########################################
+  # PostgreSQL ###########################################
   postgres:
     restart: always
     container_name: postgres
@@ -70,7 +71,7 @@ services:
       - internal
       - shared
 
-  ## MongoDB ###################################################
+  # MongoDB ###################################################
   mongo:
     container_name: mongo
     restart: always
