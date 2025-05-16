@@ -1,138 +1,29 @@
-networks:
-  kafka:
+## Database #####################################################
+## MySQL    #####################################################
 
-volumes:
-  Kafka00:
-    driver: local
-  Kafka01:
-    driver: local
-  Kafka02:
-    driver: local
+networks:
+  env-internal:
+    driver: bridge
 
 services:
-  kafka00:
-    image: bitnami/kafka:${BITNAMI_KAFKA_VERSION}-debian-11-r0
-    restart: unless-stopped
-    container_name: kafka00
-    ports:
-      - '10000:9094'
+  mysql:
+    restart: always
+    container_name: mysql
+    build:
+      context: ./mysql
+      args:
+        - MYSQL_VERSION=${MYSQL_VERSION}
     environment:
-      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
-      # KRaft settings
-      - KAFKA_CFG_BROKER_ID=0
-      - KAFKA_CFG_NODE_ID=0
-      - KAFKA_KRAFT_CLUSTER_ID=HsDBs9l6UUmQq7Y5E6bNlw
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka00:9093,1@kafka01:9093,2@kafka02:9093
-      - KAFKA_CFG_PROCESS_ROLES=controller,broker
-      # Listeners
-      - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka00:9092,EXTERNAL://localhost:10000
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
-      # Clustering
-      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
-    networks:
-      - kafka
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - TZ=${MYSQL_TIMEZONE}
     volumes:
-      - "Kafka00:/kafka"
-
-  kafka01:
-    image: bitnami/kafka:${BITNAMI_KAFKA_VERSION}-debian-11-r0
-    restart: unless-stopped
-    container_name: kafka01
+      - ${MYSQL_DATA_PATH_HOST}/mysql:/var/lib/mysql
+      - ${MYSQL_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
     ports:
-      - '10001:9094'
-    environment:
-      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
-      # KRaft settings
-      - KAFKA_CFG_BROKER_ID=1
-      - KAFKA_CFG_NODE_ID=1
-      - KAFKA_KRAFT_CLUSTER_ID=HsDBs9l6UUmQq7Y5E6bNlw
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka00:9093,1@kafka01:9093,2@kafka02:9093
-      - KAFKA_CFG_PROCESS_ROLES=controller,broker
-      # Listeners
-      - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka01:9092,EXTERNAL://localhost:10001
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
-      # Clustering
-      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
+      - "${MYSQL_PORT}:3306"
     networks:
-      - kafka
-    volumes:
-      - "Kafka01:/kafka"
+      - env-internal
 
-  kafka02:
-    image: bitnami/kafka:${BITNAMI_KAFKA_VERSION}-debian-11-r0
-    restart: unless-stopped
-    container_name: kafka02
-    ports:
-      - '10002:9094'
-    environment:
-      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
-      # KRaft settings
-      - KAFKA_CFG_BROKER_ID=2
-      - KAFKA_CFG_NODE_ID=2
-      - KAFKA_KRAFT_CLUSTER_ID=HsDBs9l6UUmQq7Y5E6bNlw
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka00:9093,1@kafka01:9093,2@kafka02:9093
-      - KAFKA_CFG_PROCESS_ROLES=controller,broker
-      # Listeners
-      - ALLOW_PLAINTEXT_LISTENER=yes
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka02:9092,EXTERNAL://localhost:10002
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
-      # Clustering
-      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=3
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=3
-      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=2
-    networks:
-      - kafka
-    volumes:
-      - "Kafka02:/kafka"
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui:${KAFKA_UI_VERSION}
-    restart: unless-stopped
-    container_name: kafka-ui
-    ports:
-      - '8080:8080'
-    environment:
-      - KAFKA_CLUSTERS_0_NAME=Local
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka00:9092,kafka01:9092,kafka02:9092
-      - DYNAMIC_CONFIG_ENABLED=true
-      - KAFKA_CLUSTERS_0_AUDIT_TOPICAUDITENABLED=true
-      - KAFKA_CLUSTERS_0_AUDIT_CONSOLEAUDITENABLED=true
-      - DYNAMIC_CONFIG_ENABLED='true'
-      - KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME=connect
-      - KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS=http://kafka-connect:8083
-      #- KAFKA_CLUSTERS_0_METRICS_PORT=9999
-    networks:
-      - kafka
-
-  connect:
-    image: quay.io/debezium/connect:${DEBEZIUM_VERSION}
-    container_name: kafka-connect
-    restart: unless-stopped
-    ports:
-      - 8083:8083
-    links:
-      - kafka02
-      - kafka01
-      - kafka00
-    environment:
-      - BOOTSTRAP_SERVERS=kafka00:9092,kafka01:9092,kafka02:9092
-      - GROUP_ID=1
-      - CONFIG_STORAGE_TOPIC=connect_local_configs
-      - OFFSET_STORAGE_TOPIC=connect_local_offsets
-    networks:
-      - kafka
