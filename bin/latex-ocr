@@ -1,0 +1,47 @@
+# This command to run the latex-ocr container
+# This container extract text from latex image and convert to latex code
+#
+# Require docker to be installed
+# docker pull lukasblecher/pix2tex:api
+# See more: https://github.com/lukas-blecher/LaTeX-OCR?tab=readme-ov-file
+# docker run -it -p -d 8501:8501 --name latex-ocr --entrypoint python lukasblecher/pix2tex:api pix2tex/api/run.py
+
+# Default
+PORT=8501
+DETACHED=false
+COMMAND=run
+CONTAINER_NAME=latex-ocr
+
+# Add parameters
+while getopts "p:ds" option; do
+    case $option in
+        p) PORT=$OPTARG ;;
+        d) DETACHED=true ;;
+        s) COMMAND="stop" ;;
+    esac
+done
+
+# Nếu lệnh là "stop", dừng container
+if [ "$COMMAND" = "stop" ]; then
+    if [ "$(docker ps -q -f name=$CONTAINER_NAME)" ]; then
+        echo "Stopping container $CONTAINER_NAME..."
+        docker stop $CONTAINER_NAME 2>/dev/null
+        echo "Stopped 🛑"
+    else
+        echo "Container $CONTAINER_NAME is not running."
+    fi
+    exit 0
+fi
+
+# Command
+DOCKER_CMD="docker run --rm -p $PORT:8501 --name $CONTAINER_NAME --entrypoint python lukasblecher/pix2tex:api pix2tex/api/run.py 2>/dev/null"
+
+# Build command
+if [ "$DETACHED" = true ]; then
+    DOCKER_CMD="docker run --rm -d -p $PORT:8501 --name $CONTAINER_NAME --entrypoint python lukasblecher/pix2tex:api pix2tex/api/run.py 2>/dev/null"
+fi
+
+# Execute
+eval $DOCKER_CMD
+echo "Successful 🚀. Let go to localhost:$PORT to start"
+

@@ -1,0 +1,55 @@
+# Current directory working in laradock
+rootCodeDir="$HOME/Projects"
+# Depth retreive folder
+depth=2
+# Command
+command="php -v"
+# Container id
+phpContainer="phpfpm74"
+# Parameter
+firstParam="run"
+
+# Function exec container
+execContainer() {
+    docker exec -it $phpContainer bash -c "$command" 2>/dev/null
+    exit
+}
+
+# Check current folder is in root code directory
+checkCurrentFolderIsInRoot() {
+    for child in $(find "$rootCodeDir" -maxdepth $depth -type d); do
+        if [ "$PWD" == $child ]; then
+            echo true
+            exit
+        fi
+    done
+    echo false
+}
+
+# Check root code directory is existed
+if [ ! -d "$rootCodeDir" ]; then
+    printf "\e[31mERROR: the directory $rootCodeDir does not exist\e[0m\n"
+    exit
+fi
+
+# Get cd target
+teleTarget=$(echo "$PWD" | sed "s|$rootCodeDir/|""|")
+# Check current folder is in root code directory
+currentFolderIsInRoot=$(checkCurrentFolderIsInRoot)
+# Build command
+if [ "$1" == "$firstParam" ] && [ "$#" -gt 1 ]; then
+    if [ "$currentFolderIsInRoot" == false ] || [ "$teleTarget" == "$PWD" ]; then
+        printf "\e[31mERROR: current folder is not a child of the docker working folder (depth=$depth)\e[0m\n"
+        exit
+    fi
+    command="cd $teleTarget && $(echo "$@" | sed "s|$firstParam |""|")"
+else
+    if [ "$currentFolderIsInRoot" == true ]; then
+        command="cd $teleTarget && php $@"
+    else
+        command="php $@"
+    fi
+fi
+
+# Execute
+execContainer

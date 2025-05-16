@@ -1,0 +1,54 @@
+# Git utilities
+function gittag() {
+  git fetch --tags
+  git tag --sort=-creatordate | grep "$1" | head -n 5
+}
+
+function gitbranch() {
+  max_length=$(git for-each-ref --sort=-committerdate refs/heads/ --format='%(refname:short)' | awk '{ print length, $0 }' | sort -nr | head -1 | awk '{ print $1 }')
+  ((max_length = max_length > 25 ? max_length : 25))
+  printf "%-${max_length}s-+-%s\n" "$(printf '%*s' $max_length | tr ' ' '-')" "-------------------"
+  printf "%-${max_length}s | %s\n" "Branch Name" "Last Commit"
+  printf "%-${max_length}s-+-%s\n" "$(printf '%*s' $max_length | tr ' ' '-')" "-------------------"
+  git for-each-ref --sort=-committerdate refs/heads/ --format='%(refname:short) - %(committerdate:relative)' | head -n 10 | while read -r line; do
+    branch_name=$(echo "$line" | awk -F' - ' '{print $1}')
+    commit_date=$(echo "$line" | awk -F' - ' '{print $2}')
+    printf "%-${max_length}s | %s\n" "$branch_name" "$commit_date"
+  done
+  printf "%-${max_length}s-+-%s\n" "$(printf '%*s' $max_length | tr ' ' '-')" "-------------------"
+}
+
+# Show file
+function showfile() {
+  local ext=$1
+  local directory=${2:-.}
+
+  if [[ -z "$ext" ]]; then
+    echo "|-----------------------------------------------------|"
+    echo "|Usage                 | showfile extension [path]    |"
+    echo "|Ex Show current path  | showfile php                 |"
+    echo "|Ex Show specific path | showfile php /path           |"
+    echo "|-----------------------------------------------------|"
+    return 1
+  fi
+
+  if [[ ! -d "$directory" ]]; then
+    echo "Error: Directory '$directory' does not exist"
+    return 1
+  fi
+
+  local count=$(find "$directory" -name "*.$ext" -type f | wc -l | tr -d ' ')
+  if [[ $count -eq 0 ]]; then
+    echo "No *.$ext files found in $directory"
+    return 0
+  fi
+
+  find "$directory" -name "*.$ext" -type f -exec du -k {} + | \
+  awk '{total+=$1} END{
+    printf "|---------------------\n"
+    printf "|Extension | '"$ext   \n"'"
+    printf "|Count     | '"$count \n"'"
+    printf "|Size (GB) | %.5f     \n", total/1024/1024
+    printf "|---------------------\n"
+  }'
+}
