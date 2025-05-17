@@ -27,5 +27,10 @@ Sau khi kết nối thành công connector sẽ public một domaim để chúng
 
 > Lưu ý là nếu mysql được đặt ở một network khác thì phải đổi `database.hostname` thành `host.docker.internal`
 
+## Use
+
+Nếu muốn kết nối từ các service container khác thì nên thêm network `shared` vào container đó sau đó dùng tên service `kafka00:9092,kafka01:9092,kafka02:9092` để kết nối tới. Nếu kết nối tới từ bên ngoài (không phải từ một container khác) thì sử dụng `127.0.0.1:9092,127.0.0.1:9092,127.0.0.1:9092` để kết nối tới.
+
+
 ## Noted
 Vào [docker hub](https://hub.docker.com/) để đọc doc khi tự build file docker compose file
