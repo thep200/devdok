@@ -219,7 +219,6 @@ services:
   #     - kafka/kpow/kpow.env
   #   mem_limit: 2G
 
-
   # Debezium ################################################
   connect:
     image: quay.io/debezium/connect:${DEBEZIUM_VERSION}
