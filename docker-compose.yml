@@ -195,7 +195,7 @@ services:
     restart: unless-stopped
     container_name: kafka-ui
     ports:
-      - '8080:8080'
+      - '${KAFKA_UI_PORT}:8080'
     environment:
       - KAFKA_CLUSTERS_0_NAME=Local
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka00:9092,kafka01:9092,kafka02:9092
@@ -246,3 +246,24 @@ services:
     networks:
       - internal
       - shared
+
+  # Schema Registry ########################################
+  # Nginx UI ###############################################
+  # Nginx ##################################################
+  # nginx-ui:
+  #   image: 'uozi/nginx-ui:latest'
+  #   stdin_open: true
+  #   tty: true
+  #   container_name: nginx-ui
+  #   restart: always
+  #   environment:
+  #     - TZ=${NGINX_TIMEZONE}
+  #   volumes:
+  #     - '${NGINX_DATA_PATH_HOST}:/etc/nginx'
+  #     - '${NGINX_UI_DATA_PATH_HOST}:/etc/nginx-ui'
+  #   ports:
+  #     - 3038:38
+  #     - 8443:443
+  #   networks:
+  #     - internal
+  #     - shared
