@@ -7,6 +7,7 @@ NC='\033[0m'
 echo "${YELLOW}Testing Kafka connection to 127.0.0.1...${NC}"
 
 # Test external ports
+
 echo "\nTesting External Ports:"
 nc -z -v -w 5 127.0.0.1 9092 2>&1 && echo "${GREEN}✓ Successfully connected to Kafka00 at 127.0.0.1:9092${NC}" || echo "${RED}✗ Failed to connect to Kafka00 at 127.0.0.1:9092${NC}"
 nc -z -v -w 5 127.0.0.1 9093 2>&1 && echo "${GREEN}✓ Successfully connected to Kafka01 at 127.0.0.1:9093${NC}" || echo "${RED}✗ Failed to connect to Kafka01 at 127.0.0.1:9093${NC}"

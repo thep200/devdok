@@ -19,12 +19,14 @@ function gitpush() {
     # Get current branch name
     local current_branch=$(git branch --show-current)
     echo ""
+
     echo "Step 1: Current branch: \033[1;32m$current_branch\033[0m"
     echo ""
 
     # List of protected branches that need confirmation
     local protected_branches=("main" "master" "staging" "stg")
     local is_protected=false
+
     for branch in "${protected_branches[@]}"; do
         if [[ "$current_branch" == "$branch" ]]; then
             is_protected=true
@@ -36,6 +38,11 @@ function gitpush() {
     echo "Step 2: Changes to be added"
     git --no-pager diff --stat
     echo ""
+    echo "Detailed changes (first 1000 lines):"
+    echo "========================================"
+    git --no-pager diff | head -1000
+    echo "========================================"
+    echo ""
 
     # Auto git add all
     echo "Step 3: Adding all changes..."
@@ -45,7 +52,7 @@ function gitpush() {
     # Check if there are changes to commit
     if git diff --cached --quiet; then
         echo "No changes to commit"
-        
+
         return 0
     fi
 
@@ -54,7 +61,7 @@ function gitpush() {
         echo -n "Are you sure to push to \033[1;31m$current_branch\033[0m branch? (y/N): "
         read confirm
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-            echo "Push cancelled - unstaging changes..."
+            echo "Push cancelled"
             git reset
             return 0
         fi
@@ -94,7 +101,8 @@ function gitpush() {
     # Push to origin
     echo "Step 6: Pushing to \033[1;34morigin/$current_branch\033[0m..."
     if git push origin "$current_branch"; then
-        echo "Successfully pushed to \033[1;34morigin/$current_branch\033[0m"
+        echo ""
+        echo "Successfully pushed to \033[1;34morigin/$current_branch\033[0m 🎉"
     else
         echo "Failed to push"
         return 1
