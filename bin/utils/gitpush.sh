@@ -6,14 +6,13 @@ function gitpush() {
 
     # Check if commit message is provided
     if [[ -z "$commit_message" ]]; then
-        echo "Error: Commit message is required"
-        echo "Usage: gitpush \"your commit message\""
+        echo "Commit message is required"
         return 1
     fi
 
     # Check if we're in a git repository
     if ! git rev-parse --git-dir > /dev/null 2>&1; then
-        echo "Error: Not in a git repository"
+        echo "Not in a git repository"
         return 1
     fi
 
@@ -49,6 +48,18 @@ function gitpush() {
         return 0
     fi
 
+    # Check for protected branch and ask for confirmation before commit
+    if [[ "$is_protected" == true ]]; then
+        echo -n "Are you sure to push to \033[1;31m$current_branch\033[0m branch? (y/N): "
+        read confirm
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            echo "Push cancelled - unstaging changes..."
+            git reset
+            return 0
+        fi
+        echo ""
+    fi
+
     # Commit with message
     echo "Step 4: Committing changes with message: \"$commit_message\""
     if ! git commit -m "$commit_message"; then
@@ -56,17 +67,6 @@ function gitpush() {
         return 1
     fi
     echo ""
-
-    # Check for protected branch and ask for confirmation
-    if [[ "$is_protected" == true ]]; then
-        echo -n "Are you sure to push to \033[1;31m$current_branch\033[0m branch? (y/N): "
-        read confirm
-        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-            echo "Push cancelled"
-            return 0
-        fi
-        echo ""
-    fi
 
     # Fetch latest changes to check for conflicts
     echo "Step 5: Fetching from origin..."
