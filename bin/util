@@ -102,34 +102,12 @@ function gitpush() {
         return 0
     fi
 
-    # Show git diff summary (non-interactive)
-    echo "Changes summary:"
-    echo "========================================"
-    if git rev-parse --verify "origin/$current_branch" > /dev/null 2>&1; then
-        echo "Diff with origin/$current_branch:"
-        git --no-pager diff --stat "origin/$current_branch"
-        echo ""
-        read -p "Show detailed diff? (y/N): " show_diff
-        if [[ "$show_diff" =~ ^[Yy]$ ]]; then
-            git --no-pager diff "origin/$current_branch"
-        fi
-    else
-        echo "No origin/$current_branch found. Showing staged changes:"
-        git --no-pager diff --cached --stat
-        echo ""
-        read -p "Show detailed diff? (y/N): " show_diff
-        if [[ "$show_diff" =~ ^[Yy]$ ]]; then
-            git --no-pager diff --cached
-        fi
-    fi
-    echo "========================================"
-
     # Commit with message
     echo "Committing changes..."
-    if ! git commit -m "$commit_message"; then
-        echo "Error: Failed to commit changes"
-        return 1
-    fi
+    # if ! git commit -m "$commit_message"; then
+    #     echo "Error: Failed to commit changes"
+    #     return 1
+    # fi
 
     # Check for protected branch and ask for confirmation
     if [[ "$is_protected" == true ]]; then
