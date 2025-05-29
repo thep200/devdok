@@ -3,25 +3,24 @@
 # Git push with safety checks and automation
 function gitpush() {
     local commit_message="$1"
+    local green_arrow="\033[32m➤\033[0m"
+    local success_icon="🎉"
+    local error_icon="❌"
 
     # Check if commit message is provided
     if [[ -z "$commit_message" ]]; then
-        echo "Commit message is required"
+        echo "${error_icon} Required commit message"
         return 1
     fi
 
     # Check if we're in a git repository
     if ! git rev-parse --git-dir > /dev/null 2>&1; then
-        echo "Not in a git repository"
+        echo "${error_icon} Invalid repository"
         return 1
     fi
 
     # Get current branch name
     local current_branch=$(git branch --show-current)
-    echo ""
-
-    echo "\033[1;36mStep 1: Current branch:\033[0m \033[1;32m$current_branch\033[0m"
-    echo ""
 
     # List of protected branches that need confirmation
     local protected_branches=("main" "master" "staging" "stg")
@@ -35,32 +34,27 @@ function gitpush() {
     done
 
     # Show changes summary before adding (non-interactive)
-    echo "\033[1;36mStep 2: Changes to be added\033[0m"
-    # echo "Summary"
+    echo "${green_arrow} Summary changes"
     git --no-pager diff --stat --color=always
     echo ""
-    # echo "Detailed:"
-    # git --no-pager diff --color=always | head -1000
-    # echo ""
 
     # Auto git add all
-    echo "\033[1;36mStep 3: Adding all changes...\033[0m"
+    echo "${green_arrow} Adding all changes"
     git add .
     echo ""
 
     # Check if there are changes to commit
     if git diff --cached --quiet; then
-        echo "No changes to commit"
-
+        echo "${green_arrow} No changes to commit"
         return 0
     fi
 
     # Check for protected branch and ask for confirmation before commit
     if [[ "$is_protected" == true ]]; then
-        echo -n "Are you sure to push to \033[1;31m$current_branch\033[0m branch? (y/N): "
+        echo -n "${green_arrow} Push to branch \033[1;31m$current_branch\033[0m? (y/n): "
         read confirm
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-            echo "Push cancelled"
+            echo "${error_icon} Cancelled"
             git reset
             return 0
         fi
@@ -68,15 +62,15 @@ function gitpush() {
     fi
 
     # Commit with message
-    echo "\033[1;36mStep 4: Committing changes with message:\033[0m \"$commit_message\""
+    echo "${green_arrow} Committing changes"
     if ! git commit -m "$commit_message"; then
-        echo "Error: Failed to commit changes"
+        echo "${error_icon} Failed to commit"
         return 1
     fi
     echo ""
 
     # Fetch latest changes to check for conflicts
-    echo "\033[1;36mStep 5: Fetching from origin...\033[0m"
+    echo "${green_arrow} Fetching from origin"
     git fetch origin
     echo ""
 
@@ -85,12 +79,10 @@ function gitpush() {
         # Check if we need to merge
         local behind_count=$(git rev-list --count HEAD..origin/$current_branch)
         if [[ $behind_count -gt 0 ]]; then
-            echo "Your branch is behind \033[1;33morigin/$current_branch\033[0m by $behind_count commits"
-            echo "Attempting to pull and merge..."
-
+            echo "${green_arrow} Pull and merge before pushing"
             if ! git pull origin "$current_branch"; then
                 echo ""
-                echo "Merge conflicts detected!"
+                echo "${error_icon} Conflicts detected!"
                 return 1
             fi
             echo ""
@@ -98,12 +90,12 @@ function gitpush() {
     fi
 
     # Push to origin
-    echo "\033[1;36mStep 6: Pushing to\033[0m \033[1;34morigin/$current_branch\033[0m..."
+    echo "${green_arrow} Pushing to \033[32morigin/$current_branch\033[0m"
     if git push origin "$current_branch"; then
         echo ""
-        echo "🎉 Pushed to \033[1;34morigin/$current_branch\033[0m"
+        echo "${success_icon} Pushed to \033[32morigin/$current_branch\033[0m"
     else
-        echo "Failed to push"
+        echo "${error_icon} Failed to push"
         return 1
     fi
     echo ""
