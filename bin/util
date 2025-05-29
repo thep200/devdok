@@ -118,6 +118,7 @@ function gitpush() {
     else
         echo "No origin/$current_branch found. Showing staged changes:"
         git --no-pager diff --cached | head -20
+        
         local total_lines=$(git diff --cached | wc -l)
         if [[ $total_lines -gt 20 ]]; then
             echo "... (showing first 20 lines of $total_lines total lines)"
