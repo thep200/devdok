@@ -153,10 +153,10 @@ function gitpush() {
 
     # Push to origin
     echo "Pushing to origin/$current_branch..."
-    if git push origin "$current_branch"; then
-        echo "Successfully pushed to origin/$current_branch"
-    else
-        echo "ERROR: Failed to push. There might be conflicts or network issues"
-        return 1
-    fi
+    # if git push origin "$current_branch"; then
+    #     echo "Successfully pushed to origin/$current_branch"
+    # else
+    #     echo "ERROR: Failed to push. There might be conflicts or network issues"
+    #     return 1
+    # fi
 }
