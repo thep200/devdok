@@ -20,7 +20,7 @@ function gitpush() {
     local current_branch=$(git branch --show-current)
     echo ""
 
-    echo "Step 1: Current branch: \033[1;32m$current_branch\033[0m"
+    echo "\033[1;36mStep 1: Current branch:\033[0m \033[1;32m$current_branch\033[0m"
     echo ""
 
     # List of protected branches that need confirmation
@@ -35,17 +35,16 @@ function gitpush() {
     done
 
     # Show changes summary before adding (non-interactive)
-    echo "Step 2: Changes to be added"
-    git --no-pager diff --stat
+    echo "\033[1;36mStep 2: Changes to be added\033[0m"
+    # echo "Summary"
+    git --no-pager diff --stat --color=always
     echo ""
-    echo "Detailed changes (first 1000 lines):"
-    echo "========================================"
-    git --no-pager diff | head -1000
-    echo "========================================"
-    echo ""
+    # echo "Detailed:"
+    # git --no-pager diff --color=always | head -1000
+    # echo ""
 
     # Auto git add all
-    echo "Step 3: Adding all changes..."
+    echo "\033[1;36mStep 3: Adding all changes...\033[0m"
     git add .
     echo ""
 
@@ -69,7 +68,7 @@ function gitpush() {
     fi
 
     # Commit with message
-    echo "Step 4: Committing changes with message: \"$commit_message\""
+    echo "\033[1;36mStep 4: Committing changes with message:\033[0m \"$commit_message\""
     if ! git commit -m "$commit_message"; then
         echo "Error: Failed to commit changes"
         return 1
@@ -77,7 +76,7 @@ function gitpush() {
     echo ""
 
     # Fetch latest changes to check for conflicts
-    echo "Step 5: Fetching from origin..."
+    echo "\033[1;36mStep 5: Fetching from origin...\033[0m"
     git fetch origin
     echo ""
 
@@ -99,10 +98,10 @@ function gitpush() {
     fi
 
     # Push to origin
-    echo "Step 6: Pushing to \033[1;34morigin/$current_branch\033[0m..."
+    echo "\033[1;36mStep 6: Pushing to\033[0m \033[1;34morigin/$current_branch\033[0m..."
     if git push origin "$current_branch"; then
         echo ""
-        echo "Successfully pushed to \033[1;34morigin/$current_branch\033[0m 🎉"
+        echo "🎉 Pushed to \033[1;34morigin/$current_branch\033[0m"
     else
         echo "Failed to push"
         return 1
