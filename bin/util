@@ -102,26 +102,24 @@ function gitpush() {
         return 0
     fi
 
-    # Show git diff with origin (limited output to avoid pager)
-    echo "Showing diff with origin/$current_branch (first 20 lines):"
+    # Show git diff summary (non-interactive)
+    echo "Changes summary:"
     echo "========================================"
     if git rev-parse --verify "origin/$current_branch" > /dev/null 2>&1; then
-        git --no-pager diff "origin/$current_branch" | head -20
-        local total_lines=$(git diff "origin/$current_branch" | wc -l)
-        if [[ $total_lines -gt 20 ]]; then
-            echo "... (showing first 20 lines of $total_lines total lines)"
-            read -p "Show full diff? (y/N): " show_full
-            if [[ "$show_full" =~ ^[Yy]$ ]]; then
-                git --no-pager diff "origin/$current_branch"
-            fi
+        echo "Diff with origin/$current_branch:"
+        git --no-pager diff --stat "origin/$current_branch"
+        echo ""
+        read -p "Show detailed diff? (y/N): " show_diff
+        if [[ "$show_diff" =~ ^[Yy]$ ]]; then
+            git --no-pager diff "origin/$current_branch"
         fi
     else
         echo "No origin/$current_branch found. Showing staged changes:"
-        git --no-pager diff --cached | head -20
-        
-        local total_lines=$(git diff --cached | wc -l)
-        if [[ $total_lines -gt 20 ]]; then
-            echo "... (showing first 20 lines of $total_lines total lines)"
+        git --no-pager diff --cached --stat
+        echo ""
+        read -p "Show detailed diff? (y/N): " show_diff
+        if [[ "$show_diff" =~ ^[Yy]$ ]]; then
+            git --no-pager diff --cached
         fi
     fi
     echo "========================================"
