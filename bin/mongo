@@ -1,0 +1,11 @@
+# Container
+mongoContainer=mongo
+
+# Build command
+command="mongosh $@"
+if [ "$#" -eq 0 ]; then
+    command="mongosh --version"
+fi
+
+# Execute
+docker exec -it $mongoContainer bash -c "$command" 2>/dev/null
