@@ -4,8 +4,10 @@
 function gitpush() {
     local commit_message="$1"
     local green_arrow="\033[32m➤\033[0m"
-    local success_icon="🎉"
-    local error_icon="❌"
+    # local success_icon="🎉"
+    local success_icon="\033[32m✔\033[0m"
+    # local error_icon="❌"
+    local error_icon="\033[31m✘\033[0m"
 
     # Check if commit message is provided
     if [[ -z "$commit_message" ]]; then
@@ -41,7 +43,6 @@ function gitpush() {
     # Auto git add all
     echo "${green_arrow} Adding all changes"
     git add .
-    echo ""
 
     # Check if there are changes to commit
     if git diff --cached --quiet; then
@@ -51,7 +52,8 @@ function gitpush() {
 
     # Check for protected branch and ask for confirmation before commit
     if [[ "$is_protected" == true ]]; then
-        echo -n "${green_arrow} Push to branch \033[1;31m$current_branch\033[0m? (y/n): "
+        echo -n "${green_arrow} Push to \033[32m$current_branch\033[0m branch? (y/n): "
+        # echo -n "${green_arrow} Push to branch \033[1;31m$current_branch\033[0m? (y/n): "
         read confirm
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
             echo "${error_icon} Cancelled"

@@ -16,7 +16,7 @@ function gittag() {
 
     # Enter new tag name or skip
     echo ""
-    echo -n "${green_arrow} Type new tag (Enter to skip): "
+    echo -n "${green_arrow} Type new tag (or Enter to skip): "
     read new_tag
 
     if [ -n "$new_tag" ]; then
