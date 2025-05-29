@@ -1,9 +1,10 @@
 #!/bin/bash
 # Main utility file - imports all utility functions
 
-# Get the directory where this script is located
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-UTILS_DIR="$SCRIPT_DIR/bin/utils"
+# Get the directory where the util command is located
+UTIL_PATH="$(which util)"
+SCRIPT_DIR="$(dirname "$UTIL_PATH")"
+UTILS_DIR="$SCRIPT_DIR/utils"
 
 # Source all utility functions
 source "$UTILS_DIR/gittag.sh"
