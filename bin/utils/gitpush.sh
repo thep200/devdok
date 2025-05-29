@@ -45,6 +45,7 @@ function gitpush() {
     # Check if there are changes to commit
     if git diff --cached --quiet; then
         echo "No changes to commit"
+        
         return 0
     fi
 
