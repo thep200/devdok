@@ -77,7 +77,7 @@ function gitpush() {
         local behind_count=$(git rev-list --count HEAD..origin/$current_branch)
         if [[ $behind_count -gt 0 ]]; then
             echo "${green_arrow} Pull and merge before pushing"
-            if ! git pull origin "$current_branch"; then
+            if ! git pull origin "$current_branch" > /dev/null 2>&1; then
                 echo "${error_icon} Conflicts detected!"
                 return 1
             fi
