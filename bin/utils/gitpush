@@ -69,7 +69,7 @@ function gitpush() {
 
     # Fetch latest changes to check for conflicts
     echo "${green_arrow} Fetching from origin"
-    git fetch origin
+    git fetch origin > /dev/null 2>&1
 
     # Check for merge conflicts before pushing
     if git rev-parse --verify "origin/$current_branch" > /dev/null 2>&1; then
@@ -87,10 +87,11 @@ function gitpush() {
     # Push to origin
     echo "${green_arrow} Pushing to \033[32morigin/$current_branch\033[0m"
     if git push origin "$current_branch"; then
+        echo ""
         echo "${success_icon} Pushed to \033[32morigin/$current_branch\033[0m 🎉"
     else
+        echo ""
         echo "${error_icon} Failed to push"
         return 1
     fi
-    echo ""
 }
