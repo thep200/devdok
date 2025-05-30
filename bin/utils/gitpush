@@ -4,9 +4,7 @@
 function gitpush() {
     local commit_message="$1"
     local green_arrow="\033[32m➤\033[0m"
-    # local success_icon="🎉"
     local success_icon="\033[32m✔\033[0m"
-    # local error_icon="❌"
     local error_icon="\033[31m✘\033[0m"
 
     # Check if commit message is provided
@@ -52,15 +50,13 @@ function gitpush() {
 
     # Check for protected branch and ask for confirmation before commit
     if [[ "$is_protected" == true ]]; then
-        echo -n "${green_arrow} Push to \033[32m$current_branch\033[0m branch? (y/n): "
-        # echo -n "${green_arrow} Push to branch \033[1;31m$current_branch\033[0m? (y/n): "
+        echo -n "${green_arrow} Push to \033[32m$current_branch\033[0m branch? [Y/n]: "
         read confirm
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
             echo "${error_icon} Cancelled"
             git reset
             return 0
         fi
-        echo ""
     fi
 
     # Commit with message
@@ -74,7 +70,6 @@ function gitpush() {
     # Fetch latest changes to check for conflicts
     echo "${green_arrow} Fetching from origin"
     git fetch origin
-    echo ""
 
     # Check for merge conflicts before pushing
     if git rev-parse --verify "origin/$current_branch" > /dev/null 2>&1; then
@@ -83,19 +78,16 @@ function gitpush() {
         if [[ $behind_count -gt 0 ]]; then
             echo "${green_arrow} Pull and merge before pushing"
             if ! git pull origin "$current_branch"; then
-                echo ""
                 echo "${error_icon} Conflicts detected!"
                 return 1
             fi
-            echo ""
         fi
     fi
 
     # Push to origin
     echo "${green_arrow} Pushing to \033[32morigin/$current_branch\033[0m"
     if git push origin "$current_branch"; then
-        echo ""
-        echo "${success_icon} Pushed to \033[32morigin/$current_branch\033[0m"
+        echo "${success_icon} Pushed to \033[32morigin/$current_branch\033[0m 🎉"
     else
         echo "${error_icon} Failed to push"
         return 1

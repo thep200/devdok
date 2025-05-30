@@ -4,6 +4,7 @@
         "gitbranch",
         "gitpush",
         "gittag",
+        "morigin",
         "showfile"
     ]
 }

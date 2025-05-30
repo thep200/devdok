@@ -37,7 +37,7 @@ function gittag() {
 
         # Need confirm
         if [ "$needs_confirm" = true ]; then
-            echo -n "${green_arrow} Create \033[32m$new_tag\033[0m tag? (y/n): "
+            echo -n "${green_arrow} Create \033[32m$new_tag\033[0m tag? [Y/n]: "
             read confirm
             if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
                 echo "${error_icon} Cancelled"
