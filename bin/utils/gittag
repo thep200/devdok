@@ -6,8 +6,8 @@ function gittag() {
     # Protected tag prefixes that require confirmation
     local protected_prefixes=("live" "prod" "stable")
     local green_arrow="\033[32m➤\033[0m"
-    local success_icon="🎉"
-    local error_icon="❌"
+    local success_icon="\033[32m✔\033[0m"
+    local error_icon="\033[31m✘\033[0m"
 
     # Fetch latest tags
     git fetch --tags > /dev/null 2>&1
