@@ -49,9 +49,11 @@ function gittag() {
         git tag "$new_tag"
         if [ $? -eq 0 ]; then
             git push origin "$new_tag"
-            echo "${success_icon} Created tag \033[32m$new_tag\033[0m"
+            echo ""
+            echo "${success_icon} Created tag \033[32m$new_tag\033[0m 🎉"
         else
-            echo "${error_icon} Failed to create tag \033[32m$new_tag\033[0m"
+            echo ""
+            echo "${error_icon} Failed"
             return 1
         fi
     fi
