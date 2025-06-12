@@ -12,6 +12,13 @@ function gittag() {
     # Fetch latest tags
     git fetch --tags > /dev/null 2>&1
     local latest_tags=$(git tag --sort=-creatordate | grep "$1" | head -n 7)
+
+    # Exit if no tags found
+    if [ -z "$latest_tags" ]; then
+        echo "${error_icon} No tags found"
+        return 0
+    fi
+
     echo "$latest_tags"
 
     # Enter new tag name or skip
