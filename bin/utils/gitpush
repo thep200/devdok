@@ -51,7 +51,8 @@ function gitpush() {
     # Check for protected branch and ask for confirmation before commit
     if [[ "$is_protected" == true ]]; then
         echo -n "${green_arrow} Push to \033[32m$current_branch\033[0m branch? [Y/n]: "
-        read confirm
+        read -n 1 confirm
+        echo ""
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
             echo "${error_icon} Cancelled"
             git reset
