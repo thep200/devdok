@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Function to find and kill a process running on a specific port.
+# It takes one argument: the port number.
+function killport() {
+    if [ -z "$1" ]; then
+        echo "Please provide a port number."
+        return 1
+    fi
+
+    lsof -ti:"$1" | xargs kill
+    echo "Killed process running on port $1"
+}
