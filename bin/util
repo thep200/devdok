@@ -7,7 +7,8 @@ SCRIPT_DIR="$(dirname "$UTIL_PATH")"
 UTILS_DIR="$SCRIPT_DIR/utils"
 
 # Source all utility functions
+source "$UTILS_DIR/showfile"
+source "$UTILS_DIR/killport"
 source "$UTILS_DIR/gittag"
 source "$UTILS_DIR/gitbranch"
-source "$UTILS_DIR/showfile"
 source "$UTILS_DIR/gitpush"
