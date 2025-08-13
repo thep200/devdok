@@ -11,6 +11,7 @@ volumes:
   kafka00_data:
   kafka01_data:
   kafka02_data:
+  nats_data:
 
 services:
   # Redis #####################################################
@@ -267,3 +268,19 @@ services:
   #   networks:
   #     - internal
   #     - shared
+
+  # NATS ####################################################
+  nats:
+    build:
+      context: ./nats
+    container_name: nats
+    ports:
+      - "4222:4222"  # Client connections
+      - "8222:8222"  # HTTP monitoring
+      - "6222:6222"  # Clustering
+    volumes:
+      - nats_data:/data
+    restart: unless-stopped
+    networks:
+      - internal
+      - shared
