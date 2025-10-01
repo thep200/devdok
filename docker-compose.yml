@@ -5,6 +5,8 @@ networks:
     external: true
   internal:
     driver: bridge
+  envoy:
+    driver: bridge
 
 # Volumes #####################################################
 volumes:
@@ -209,17 +211,6 @@ services:
       - internal
       - shared
 
-  # KPow #############################################
-  # kpow:
-  #   image: factorhouse/kpow-ce:latest
-  #   container_name: kpow
-  #   restart: always
-  #   ports:
-  #     - "3000:3000"
-  #   env_file:
-  #     - kafka/kpow/kpow.env
-  #   mem_limit: 2G
-
   # Debezium ################################################
   connect:
     image: quay.io/debezium/connect:${DEBEZIUM_VERSION}
@@ -284,3 +275,13 @@ services:
     networks:
       - internal
       - shared
+
+  # Envoy ###################################################
+  envoy:
+    image: envoyproxy/envoy:v1.35.3  # Latest stable
+    container_name: envoy
+    ports:
+      - "82:82"
+      - "9901:9901"
+    networks:
+      - envoy
