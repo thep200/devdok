@@ -280,8 +280,14 @@ services:
   envoy:
     image: envoyproxy/envoy:v1.35.3  # Latest stable
     container_name: envoy
+    volumes:
+      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+    command: ["-c", "/etc/envoy/envoy.yaml"]
     ports:
       - "82:82"
       - "9901:9901"
+    restart: unless-stopped
     networks:
       - envoy
+      - internal
+      - shared
