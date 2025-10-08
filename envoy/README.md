@@ -92,6 +92,10 @@ curl http://localhost:9901/stats/prometheus
 docker-compose run --rm envoy --mode validate -c /etc/envoy/envoy.yaml
 ```
 
+## Authz
+
+Triển khai xác thực tập trung bằng gRPC qua envoy. Cần phải triển khai service `Check` trong proto của envoy cung cấp trên server sử dụng gRPC. Khi cấu hình vào envoy thì sẽ tự ăn.
+
 ## References
 
 *   [Envoy Documentation](https://www.envoyproxy.io/docs/envoy/latest/)

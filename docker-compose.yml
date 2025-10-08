@@ -278,7 +278,7 @@ services:
 
   # Envoy ###################################################
   envoy:
-    image: envoyproxy/envoy:v1.35.3  # Latest stable
+    image: envoyproxy/envoy:v1.35.3
     container_name: envoy
     volumes:
       - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
