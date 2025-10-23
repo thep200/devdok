@@ -11,9 +11,21 @@ networks:
 # Volumes #####################################################
 volumes:
   kafka00_data:
+    driver: local
   kafka01_data:
+    driver: local
   kafka02_data:
+    driver: local
   nats_data:
+    driver: local
+  postgres_data:
+    driver: local
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  mongo_data:
+    driver: local
 
 services:
   # Redis #####################################################
@@ -23,7 +35,7 @@ services:
     build:
       context: ./redis
     volumes:
-      - ${REDIS_DATA_PATH_HOST}/redis:/data
+      - redis_data:/data
       - ./redis/redis.conf:/etc/redis/redis.conf
       - ./redis/users.acl:/etc/redis/users.acl
     environment:
@@ -51,7 +63,7 @@ services:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - TZ=${MYSQL_TIMEZONE}
     volumes:
-      - ${MYSQL_DATA_PATH_HOST}/mysql:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
       - ${MYSQL_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
     ports:
       - "${MYSQL_PORT}:3306"
@@ -68,7 +80,7 @@ services:
       args:
         - POSTGRES_VERSION=${POSTGRES_VERSION}
     volumes:
-      - ${POSTGRES_DATA_PATH_HOST}/postgres:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
       - ${POSTGRES_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
     ports:
       - "${POSTGRES_PORT}:5432"
@@ -92,7 +104,7 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
     volumes:
-      - ${MONGO_DATA_PATH_HOST}/mongo:/data/db
+      - mongo_data:/data/db
       - ${MONGO_DATA_PATH_HOST}/mongo_config:/data/configdb
     networks:
       - internal
@@ -100,11 +112,11 @@ services:
 
   # Kafka ####################################################
   kafka00:
-    image: bitnami/kafka:${BITNAMI_KAFKA_VERSION}-debian-11-r0
+    image: bitnami/kafka:${BITNAMI_KAFKA_VERSION}
     restart: unless-stopped
     container_name: kafka00
     ports:
-      - '9092:9095'
+      - "9092:9095"
     environment:
       - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
       # KRaft settings
@@ -131,11 +143,11 @@ services:
       - kafka00_data:/bitnami/kafka
 
   kafka01:
-    image: bitnami/kafka:${BITNAMI_KAFKA_VERSION}-debian-11-r0
+    image: bitnami/kafka:${BITNAMI_KAFKA_VERSION}
     restart: unless-stopped
     container_name: kafka01
     ports:
-      - '9093:9095'
+      - "9093:9095"
     environment:
       - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
       # KRaft settings
@@ -162,11 +174,11 @@ services:
       - kafka01_data:/bitnami/kafka
 
   kafka02:
-    image: bitnami/kafka:${BITNAMI_KAFKA_VERSION}-debian-11-r0
+    image: bitnami/kafka:${BITNAMI_KAFKA_VERSION}
     restart: unless-stopped
     container_name: kafka02
     ports:
-      - '9094:9095'
+      - "9094:9095"
     environment:
       - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
       # KRaft settings
@@ -198,7 +210,7 @@ services:
     restart: unless-stopped
     container_name: kafka-ui
     ports:
-      - '${KAFKA_UI_PORT}:8080'
+      - "${KAFKA_UI_PORT}:8080"
     environment:
       - KAFKA_CLUSTERS_0_NAME=Local
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka00:9092,kafka01:9092,kafka02:9092
@@ -239,36 +251,15 @@ services:
       - internal
       - shared
 
-  # Schema Registry ########################################
-  # Nginx UI ###############################################
-  # Nginx ##################################################
-  # nginx-ui:
-  #   image: 'uozi/nginx-ui:latest'
-  #   stdin_open: true
-  #   tty: true
-  #   container_name: nginx-ui
-  #   restart: always
-  #   environment:
-  #     - TZ=${NGINX_TIMEZONE}
-  #   volumes:
-  #     - '${NGINX_DATA_PATH_HOST}:/etc/nginx'
-  #     - '${NGINX_UI_DATA_PATH_HOST}:/etc/nginx-ui'
-  #   ports:
-  #     - 3038:38
-  #     - 8443:443
-  #   networks:
-  #     - internal
-  #     - shared
-
   # NATS ####################################################
   nats:
     build:
       context: ./nats
     container_name: nats
     ports:
-      - "4222:4222"  # Client connections
-      - "8222:8222"  # HTTP monitoring
-      - "6222:6222"  # Clustering
+      - "4222:4222" # Client connections
+      - "8222:8222" # HTTP monitoring
+      - "6222:6222" # Clustering
     volumes:
       - nats_data:/data
     restart: unless-stopped
