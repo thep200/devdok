@@ -12,6 +12,8 @@ networks:
 volumes:
   kafka_data:
     driver: local
+  schema_registry_data:
+    driver: local
   nats_data:
     driver: local
   postgres_data:
@@ -107,7 +109,7 @@ services:
 
   # Kafka ####################################################
   kafka:
-    image: apache/kafka:latest
+    image: apache/kafka:${KAFKA_VERSION}
     restart: unless-stopped
     container_name: kafka
     ports:
@@ -133,6 +135,34 @@ services:
     volumes:
       - kafka_data:/var/lib/kafka/data
 
+  # Schema Registry ########################################
+  schema-registry:
+    image: confluentinc/cp-schema-registry:${SCHEMA_REGISTRY_VERSION:-7.5.0}
+    restart: unless-stopped
+    container_name: schema-registry
+    ports:
+      - "${SCHEMA_REGISTRY_PORT:-8081}:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:29092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_DEBUG: "false"
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: 1
+      SCHEMA_REGISTRY_SCHEMA_REGISTRY_GROUP_ID: schema-registry-group
+    volumes:
+      - schema_registry_data:/var/lib/schema-registry
+    networks:
+      - internal
+      - shared
+    depends_on:
+      - kafka
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/subjects"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Kafka-ui ###########################################
   kafka-ui:
     image: provectuslabs/kafka-ui:${KAFKA_UI_VERSION:-latest}
@@ -143,6 +173,7 @@ services:
     environment:
       - KAFKA_CLUSTERS_0_NAME=Local
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
+      - KAFKA_CLUSTERS_0_SCHEMAREGISTRY=http://schema-registry:8081
       - DYNAMIC_CONFIG_ENABLED=true
       - KAFKA_CLUSTERS_0_AUDIT_TOPICAUDITENABLED=true
       - KAFKA_CLUSTERS_0_AUDIT_CONSOLEAUDITENABLED=true
@@ -153,6 +184,7 @@ services:
       - shared
     depends_on:
       - kafka
+      - schema-registry
 
   # Debezium ################################################
   connect:
@@ -163,14 +195,17 @@ services:
       - 8083:8083
     depends_on:
       - kafka
+      - schema-registry
     environment:
       - GROUP_ID=1
       - BOOTSTRAP_SERVERS=kafka:29092
       - CONFIG_STORAGE_TOPIC=connect_local_configs
       - OFFSET_STORAGE_TOPIC=connect_local_offsets
       - STATUS_STORAGE_TOPIC=connect_local_status
-      - KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
-      - VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - KEY_CONVERTER=io.confluent.connect.avro.AvroConverter
+      - VALUE_CONVERTER=io.confluent.connect.avro.AvroConverter
+      - KEY_CONVERTER_SCHEMA_REGISTRY_URL=http://schema-registry:8081
+      - VALUE_CONVERTER_SCHEMA_REGISTRY_URL=http://schema-registry:8081
       - KEY_CONVERTER_SCHEMAS_ENABLE=true
       - VALUE_CONVERTER_SCHEMAS_ENABLE=true
       - OFFSET_FLUSH_INTERVAL_MS=10000
