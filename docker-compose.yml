@@ -24,6 +24,8 @@ volumes:
     driver: local
   mongo_data:
     driver: local
+  rabbitmq_data:
+    driver: local
 
 services:
   # Redis #####################################################
@@ -224,6 +226,26 @@ services:
     volumes:
       - nats_data:/data
     restart: unless-stopped
+    networks:
+      - internal
+      - shared
+
+  # RabbitMQ ################################################
+  rabbitmq:
+    restart: always
+    container_name: rabbitmq
+    build:
+      context: ./rabbitmq
+      args:
+        - RABBITMQ_VERSION=${RABBITMQ_VERSION}
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+    ports:
+      - "${RABBITMQ_PORT}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     networks:
       - internal
       - shared
