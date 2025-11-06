@@ -84,7 +84,7 @@ services:
       - DB_PORT=3306
     image: vitess/lite:${VITESS_TAG:-latest}
     volumes:
-      - .:/script
+      - ./compose:/script
     networks:
       - shared
 
@@ -117,7 +117,7 @@ services:
       - DB_PORT=3306
     image: vitess/lite:${VITESS_TAG:-latest}
     volumes:
-      - .:/script
+      - ./compose:/script
     networks:
       - shared
 
@@ -134,7 +134,7 @@ services:
       - GRPC_PORT=15999
     image: vitess/lite:${VITESS_TAG:-latest}
     volumes:
-      - .:/script
+      - ./compose:/script
     networks:
       - shared
 
@@ -155,7 +155,7 @@ services:
       - DB_PORT=3306
     image: vitess/lite:${VITESS_TAG:-latest}
     volumes:
-      - .:/script
+      - ./compose:/script
     networks:
       - shared
 
@@ -172,7 +172,7 @@ services:
       - 15000:8080
       - "15999"
     volumes:
-      - .:/script
+      - ./compose:/script
     networks:
       - shared
 
@@ -193,7 +193,7 @@ services:
       - "15999"
       - 15306:15306
     volumes:
-      - .:/script
+      - ./compose:/script
     networks:
       - shared
 
@@ -218,7 +218,7 @@ services:
     ports:
       - 13000:8080
     volumes:
-      - .:/script
+      - ./compose:/script
     networks:
       - shared
 
@@ -258,7 +258,7 @@ services:
       - "15999"
       - "3306"
     volumes:
-      - .:/script
+      - ./compose:/script
     networks:
       - shared
 
@@ -298,7 +298,7 @@ services:
       - "15999"
       - "3306"
     volumes:
-      - .:/script
+      - ./compose:/script
     networks:
       - shared
 
@@ -338,7 +338,7 @@ services:
       - "15999"
       - "3306"
     volumes:
-      - .:/script
+      - ./compose:/script
     networks:
       - shared
 
@@ -378,7 +378,7 @@ services:
       - "15999"
       - "3306"
     volumes:
-      - .:/script
+      - ./compose:/script
     networks:
       - shared
 
@@ -418,7 +418,7 @@ services:
       - "15999"
       - "3306"
     volumes:
-      - .:/script
+      - ./compose:/script
     networks:
       - shared
 
@@ -458,7 +458,7 @@ services:
       - "15999"
       - "3306"
     volumes:
-      - .:/script
+      - ./compose:/script
     networks:
       - shared
 
