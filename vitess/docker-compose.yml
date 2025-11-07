@@ -136,25 +136,25 @@ services:
     networks:
       - shared
 
-  vreplication:
-    command:
-      - sh
-      - -c
-      - "[ $$EXTERNAL_DB -eq 1 ] && /script/externaldb_vreplication.sh || exit 0"
-    depends_on:
-      - vtctld
-    environment:
-      - TOPOLOGY_FLAGS=${TOPOLOGY_FLAGS}
-      - EXTERNAL_DB=${EXTERNAL_DB}
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
-      - DB_PORT=${DB_PORT}
-    image: vitess/lite:${VITESS_VERSION}
-    volumes:
-      - ./scripts:/script
-    networks:
-      - shared
+  # vreplication:
+  #   command:
+  #     - sh
+  #     - -c
+  #     - "[ $$EXTERNAL_DB -eq 1 ] && /script/externaldb_vreplication.sh || exit 0"
+  #   depends_on:
+  #     - vtctld
+  #   environment:
+  #     - TOPOLOGY_FLAGS=${TOPOLOGY_FLAGS}
+  #     - EXTERNAL_DB=${EXTERNAL_DB}
+  #     - DB_HOST=${DB_HOST}
+  #     - DB_USER=${DB_USER}
+  #     - DB_PASS=${DB_PASS}
+  #     - DB_PORT=${DB_PORT}
+  #   image: vitess/lite:${VITESS_VERSION}
+  #   volumes:
+  #     - ./scripts:/script
+  #   networks:
+  #     - shared
 
   vtctld:
     command:
