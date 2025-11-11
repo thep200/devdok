@@ -1,62 +1,61 @@
 services:
   etcd1:
-    image: gcr.io/etcd-development/etcd:${ETCD_VERSION}
+    image: quay.io/coreos/etcd:v3.5.11
+    command: etcd --name etcd1 --initial-advertise-peer-urls http://etcd1:2380 --listen-peer-urls http://0.0.0.0:2380 --listen-client-urls http://0.0.0.0:2379 --advertise-client-urls http://etcd1:2379 --initial-cluster-token etcd-cluster --initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380 --initial-cluster-state new
+    ports:
+      - "2379:2379"
+      - "2380:2380"
     hostname: etcd1
     environment:
-      - ETCD_NAME=etcd1
-      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd1:2380
-      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
-      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd1:2379
-      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
-      - ETCD_INITIAL_CLUSTER=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
-      - ETCD_INITIAL_CLUSTER_STATE=new
-      - ETCD_INITIAL_CLUSTER_TOKEN=${ETCD_CLUSTER_TOKEN}
-    ports:
-      - ${ETCD1_CLIENT_PORT}:${ETCD1_CLIENT_PORT}
-      - ${ETCD1_PEER_PORT}:${ETCD1_PEER_PORT}
-    networks:
-      - shared
-
+      - VT_TOPO_IMPLEMENTATION=etcd2
+      - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
   etcd2:
-    image: gcr.io/etcd-development/etcd:${ETCD_VERSION}
+    image: quay.io/coreos/etcd:v3.5.11
+    command: etcd --name etcd2 --initial-advertise-peer-urls http://etcd2:2380 --listen-peer-urls http://0.0.0.0:2380 --listen-client-urls http://0.0.0.0:2379 --advertise-client-urls http://etcd2:2379 --initial-cluster-token etcd-cluster --initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380 --initial-cluster-state new
+    depends_on:
+      - etcd1
     hostname: etcd2
-    depends_on:
-      - etcd1
     environment:
-      - ETCD_NAME=etcd2
-      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd2:2380
-      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
-      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd2:2379
-      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
-      - ETCD_INITIAL_CLUSTER=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
-      - ETCD_INITIAL_CLUSTER_STATE=new
-      - ETCD_INITIAL_CLUSTER_TOKEN=${ETCD_CLUSTER_TOKEN}
-    expose:
-      - "${ETCD2_CLIENT_PORT}"
-      - "${ETCD2_PEER_PORT}"
-    networks:
-      - shared
-
+      - VT_TOPO_IMPLEMENTATION=etcd2
+      - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
   etcd3:
-    image: gcr.io/etcd-development/etcd:${ETCD_VERSION}
-    hostname: etcd3
+    image: quay.io/coreos/etcd:v3.5.11
+    command: etcd --name etcd3 --initial-advertise-peer-urls http://etcd3:2380 --listen-peer-urls http://0.0.0.0:2380 --listen-client-urls http://0.0.0.0:2379 --advertise-client-urls http://etcd3:2379 --initial-cluster-token etcd-cluster --initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380 --initial-cluster-state new
     depends_on:
       - etcd1
+    hostname: etcd3
     environment:
-      - ETCD_NAME=etcd3
-      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd3:2380
-      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
-      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd3:2379
-      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
-      - ETCD_INITIAL_CLUSTER=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
-      - ETCD_INITIAL_CLUSTER_STATE=new
-      - ETCD_INITIAL_CLUSTER_TOKEN=${ETCD_CLUSTER_TOKEN}
-    expose:
-      - "${ETCD3_CLIENT_PORT}"
-      - "${ETCD3_PEER_PORT}"
-    networks:
-      - shared
-
+      - VT_TOPO_IMPLEMENTATION=etcd2
+      - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+  external_db_host:
+    platform: linux/amd64
+    build:
+      context: ./external_db/mysql
+      dockerfile: Dockerfile
+    command:
+      - --server-id=1
+      - --log-bin=mysql-bin
+      - --gtid_mode=ON
+      - --enforce_gtid_consistency
+      - --general_log=1
+      - --slow_query_log=1
+    environment:
+      - VT_TOPO_IMPLEMENTATION=etcd2
+      - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+      - MYSQL_DATABASE=${DB:-commerce}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-pass}
+    healthcheck:
+      retries: 10
+      test:
+        /usr/bin/mysql --user=root --password=$${MYSQL_ROOT_PASSWORD} --execute
+        "SHOW DATABASES;"
+      timeout: 10s
+    ports:
+      - "3306"
+    restart: always
+    volumes:
+      - ./external_db/mysql/:/docker-entrypoint-initdb.d/
+      - ./external_db/mysql/log:/var/log/mysql
   schemaload_lookup_keyspace:
     command:
       - sh
@@ -66,27 +65,23 @@ services:
       vttablet301:
         condition: service_healthy
     environment:
-      - TOPOLOGY_FLAGS=${TOPOLOGY_FLAGS}
-      - WEB_PORT=${VTTABLET_WEB_PORT}
-      - GRPC_PORT=${VTTABLET_GRPC_PORT}
-      - CELL=${CELL}
-      - KEYSPACE=${LOOKUP_KEYSPACE}
-      - TARGETTAB=${SCHEMALOAD_LOOKUP_TARGET_TAB}
-      - SLEEPTIME=${SCHEMALOAD_LOOKUP_SLEEP_TIME}
-      - VSCHEMA_FILE=${LOOKUP_KEYSPACE_VSCHEMA}
-      - SCHEMA_FILES=${LOOKUP_KEYSPACE_SCHEMA}
+      - VT_TOPO_IMPLEMENTATION=etcd2
+      - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+      - TOPOLOGY_FLAGS=--topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global
+      - WEB_PORT=8080
+      - GRPC_PORT=15999
+      - CELL=test
+      - KEYSPACE=lookup_keyspace
+      - TARGETTAB=test-0000000301
+      - SLEEPTIME=15
+      - VSCHEMA_FILE=configs/lookup_keyspace_vschema.json
+      - SCHEMA_FILES=sql/lookup_keyspace_schema_file.sql
       - POST_LOAD_FILE=
-      - EXTERNAL_DB=${EXTERNAL_DB}
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
-      - DB_PORT=${DB_PORT}
-    image: vitess/lite:${VITESS_VERSION}
+      - EXTERNAL_DB=0
+    image: vitess/lite:${VITESS_TAG:-latest}
+    platform: linux/amd64
     volumes:
       - ./scripts:/script
-    networks:
-      - shared
-
   schemaload_test_keyspace:
     command:
       - sh
@@ -98,350 +93,336 @@ services:
       vttablet201:
         condition: service_healthy
     environment:
-      - TOPOLOGY_FLAGS=${TOPOLOGY_FLAGS}
-      - WEB_PORT=${VTTABLET_WEB_PORT}
-      - GRPC_PORT=${VTTABLET_GRPC_PORT}
-      - CELL=${CELL}
-      - KEYSPACE=${TEST_KEYSPACE}
-      - TARGETTAB=${SCHEMALOAD_TEST_TARGET_TAB}
-      - SLEEPTIME=${SCHEMALOAD_TEST_SLEEP_TIME}
-      - VSCHEMA_FILE=${TEST_KEYSPACE_VSCHEMA}
-      - SCHEMA_FILES=${TEST_KEYSPACE_SCHEMA}
+      - VT_TOPO_IMPLEMENTATION=etcd2
+      - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+      - TOPOLOGY_FLAGS=--topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global
+      - WEB_PORT=8080
+      - GRPC_PORT=15999
+      - CELL=test
+      - KEYSPACE=test_keyspace
+      - TARGETTAB=test-0000000101
+      - SLEEPTIME=15
+      - VSCHEMA_FILE=configs/test_keyspace_vschema.json
+      - SCHEMA_FILES=sql/test_keyspace_schema_file.sql
       - POST_LOAD_FILE=
-      - EXTERNAL_DB=${EXTERNAL_DB}
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
-      - DB_PORT=${DB_PORT}
-    image: vitess/lite:${VITESS_VERSION}
+      - EXTERNAL_DB=0
+    image: vitess/lite:${VITESS_TAG:-latest}
+    platform: linux/amd64
     volumes:
       - ./scripts:/script
-    networks:
-      - shared
-
-  set_keyspace_durability_policy:
-    command:
-      - sh
-      - -c
-      - /script/set_keyspace_durability_policy.sh
-    depends_on:
-      - vttablet101
-      - vttablet301
-    environment:
-      - KEYSPACES=${KEYSPACES}
-      - GRPC_PORT=${VTCTLD_GRPC_PORT}
-    image: vitess/lite:${VITESS_VERSION}
-    volumes:
-      - ./scripts:/script
-    networks:
-      - shared
-
-  # vreplication:
+  # set_keyspace_durability_policy:
   #   command:
   #     - sh
   #     - -c
-  #     - "[ $$EXTERNAL_DB -eq 1 ] && /script/externaldb_vreplication.sh || exit 0"
+  #     - /script/set_keyspace_durability_policy.sh
   #   depends_on:
-  #     - vtctld
+  #     - vttablet101
+  #     - vttablet301
   #   environment:
-  #     - TOPOLOGY_FLAGS=${TOPOLOGY_FLAGS}
-  #     - EXTERNAL_DB=${EXTERNAL_DB}
-  #     - DB_HOST=${DB_HOST}
-  #     - DB_USER=${DB_USER}
-  #     - DB_PASS=${DB_PASS}
-  #     - DB_PORT=${DB_PORT}
-  #   image: vitess/lite:${VITESS_VERSION}
+  #     - VT_TOPO_IMPLEMENTATION=etcd2
+  #     - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+  #     - KEYSPACES=test_keyspace lookup_keyspace
+  #     - GRPC_PORT=15999
+  #   image: vitess/lite:${VITESS_TAG:-latest}
+  #   platform: linux/amd64
   #   volumes:
   #     - ./scripts:/script
-  #   networks:
-  #     - shared
-
   vtctld:
     command:
       - sh
       - -c
-      - "/vt/bin/vtctld ${TOPOLOGY_FLAGS} --cell ${CELL} --service-map '${VTCTLD_SERVICE_MAP}' --backup-storage-implementation ${BACKUP_STORAGE_IMPLEMENTATION} --file-backup-storage-root ${BACKUP_STORAGE_ROOT} --logtostderr=${LOG_TO_STDERR} --port 8080 --grpc-port ${VTCTLD_GRPC_PORT}"
-    image: vitess/lite:${VITESS_VERSION}
-    ports:
-      - ${VTCTLD_WEB_PORT}:8080
-      - ${VTCTLD_GRPC_PORT}
-    volumes:
-      - ./scripts:/script
-    networks:
-      - shared
-
-  vtgate:
-    command: "/script/run-forever.sh /vt/bin/vtgate ${TOPOLOGY_FLAGS} --logtostderr=${LOG_TO_STDERR} --port 8080 --grpc-port ${VTGATE_GRPC_PORT} --mysql-server-port ${VTGATE_MYSQL_PORT} --mysql-auth-server-impl ${VTGATE_MYSQL_AUTH} --cell ${CELL} --cells-to-watch ${CELLS_TO_WATCH} --tablet-types-to-wait ${TABLET_TYPES_TO_WAIT} --service-map 'grpc-vtgateservice' --normalize-queries=${VTGATE_NORMALIZE_QUERIES}"
+      - "/vt/bin/vtctld --topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global --cell test --service-map 'grpc-vtctl,grpc-vtctld' --backup-storage-implementation file --file-backup-storage-root /vt/vtdataroot/backups --logtostderr=true --port 8080 --grpc-port 15999"
     depends_on:
-      - vtctld
-    image: vitess/lite:${VITESS_VERSION}
+      external_db_host:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/debug/status"]
+      interval: 30s
+      retries: 10
+      timeout: 10s
+    image: vitess/lite:${VITESS_TAG:-latest}
+    platform: linux/amd64
     ports:
-      - ${VTGATE_WEB_PORT}:8080
-      - ${VTGATE_GRPC_PORT}
-      - ${VTGATE_MYSQL_PORT}:${VTGATE_MYSQL_PORT}
+      - 15000:8080
+      - "15999"
     volumes:
       - ./scripts:/script
-    networks:
-      - shared
-
-  vtorc:
+    environment:
+      - VT_TOPO_IMPLEMENTATION=etcd2
+      - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+  vtgate:
     command:
       - sh
       - -c
-      - /script/vtorc-up.sh
+      - "/script/run-forever.sh /vt/bin/vtgate --topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global --logtostderr=true --port 8080 --grpc-port 15999 --mysql-server-port 15306 --mysql-auth-server-impl none --cell test --cells-to-watch test --tablet-types-to-wait PRIMARY,REPLICA,RDONLY --service-map 'grpc-vtgateservice' --normalize-queries=true --disable-throttler "
     depends_on:
       - vtctld
-      - set_keyspace_durability_policy
-    environment:
-      - TOPOLOGY_FLAGS=${TOPOLOGY_FLAGS}
-      - WEB_PORT=${VTTABLET_WEB_PORT}
-      - EXTERNAL_DB=${EXTERNAL_DB}
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
-      - DB_PORT=${DB_PORT}
-    image: vitess/lite:${VITESS_VERSION}
+    image: vitess/lite:${VITESS_TAG:-latest}
+    platform: linux/amd64
     ports:
-      - ${VTORC_WEB_PORT}:8080
+      - 15099:8080
+      - "15999"
+      - 15306:15306
     volumes:
       - ./scripts:/script
-    networks:
-      - shared
+    environment:
+      - VT_TOPO_IMPLEMENTATION=etcd2
+      - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
 
+  # vtorc:
+  #   command:
+  #     - sh
+  #     - -c
+  #     - /script/vtorc-up.sh
+  #   depends_on:
+  #     - vtctld
+  #     - set_keyspace_durability_policy
+  #   environment:
+  #     - VT_TOPO_IMPLEMENTATION=etcd2
+  #     - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+  #     - TOPOLOGY_FLAGS=--topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global
+  #     - WEB_PORT=8080
+  #     - EXTERNAL_DB=0
+  #     - DB_USER=
+  #     - DB_PASS=
+  #   image: vitess/lite:${VITESS_TAG:-latest}
+  #   platform: linux/amd64
+  #   ports:
+  #     - 13000:8080
+  #   volumes:
+  #     - ./scripts:/script
   vttablet101:
     command:
       - sh
       - -c
       - /script/vttablet-up.sh 101
     depends_on:
-      - vtctld
+      vtctld:
+        condition: service_healthy
     environment:
-      - TOPOLOGY_FLAGS=${TOPOLOGY_FLAGS}
-      - WEB_PORT=${VTTABLET_WEB_PORT}
-      - GRPC_PORT=${VTTABLET_GRPC_PORT}
-      - CELL=${CELL}
-      - KEYSPACE=${VTTABLET101_KEYSPACE}
-      - SHARD=${VTTABLET101_SHARD}
-      - ROLE=${VTTABLET101_ROLE}
-      - VTHOST=${VTTABLET101_HOST}
-      - EXTERNAL_DB=${EXTERNAL_DB}
-      - DB_PORT=${DB_PORT}
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
-      - DB_CHARSET=${DB_CHARSET}
+      - VT_TOPO_IMPLEMENTATION=etcd2
+      - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+      - TOPOLOGY_FLAGS=--topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global
+      - WEB_PORT=8080
+      - GRPC_PORT=15999
+      - CELL=test
+      - KEYSPACE=test_keyspace
+      - SHARD=-80
+      - ROLE=primary
+      - VTHOST=vttablet101
+      - EXTERNAL_DB=0
+      - DB_PORT=
+      - DB_HOST=
+      - DB_USER=
+      - DB_PASS=
+      - DB_CHARSET=
     healthcheck:
-      interval: ${HEALTHCHECK_INTERVAL}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: 30s
+      retries: 15
       test:
         - CMD-SHELL
-        - curl -s --fail --show-error localhost:${VTTABLET_WEB_PORT}/debug/health
-      timeout: ${HEALTHCHECK_TIMEOUT}
-    image: vitess/lite:${VITESS_VERSION}
+        - curl -s --fail --show-error localhost:8080/debug/health
+      timeout: 10s
+    image: vitess/lite:${VITESS_TAG:-latest}
+    platform: linux/amd64
     ports:
-      - ${VTTABLET101_WEB_PORT}:8080
-      - ${VTTABLET_GRPC_PORT}
-      - ${DB_PORT}
+      - 15101:8080
+      - "15999"
     volumes:
       - ./scripts:/script
-    networks:
-      - shared
-
   vttablet102:
     command:
       - sh
       - -c
       - /script/vttablet-up.sh 102
     depends_on:
-      - vtctld
+      vtctld:
+        condition: service_healthy
     environment:
-      - TOPOLOGY_FLAGS=${TOPOLOGY_FLAGS}
-      - WEB_PORT=${VTTABLET_WEB_PORT}
-      - GRPC_PORT=${VTTABLET_GRPC_PORT}
-      - CELL=${CELL}
-      - KEYSPACE=${VTTABLET102_KEYSPACE}
-      - SHARD=${VTTABLET102_SHARD}
-      - ROLE=${VTTABLET102_ROLE}
-      - VTHOST=${VTTABLET102_HOST}
-      - EXTERNAL_DB=${EXTERNAL_DB}
-      - DB_PORT=${DB_PORT}
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
-      - DB_CHARSET=${DB_CHARSET}
+      - VT_TOPO_IMPLEMENTATION=etcd2
+      - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+      - TOPOLOGY_FLAGS=--topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global
+      - WEB_PORT=8080
+      - GRPC_PORT=15999
+      - CELL=test
+      - KEYSPACE=test_keyspace
+      - SHARD=-80
+      - ROLE=replica
+      - VTHOST=vttablet102
+      - EXTERNAL_DB=0
+      - DB_PORT=
+      - DB_HOST=
+      - DB_USER=
+      - DB_PASS=
+      - DB_CHARSET=
     healthcheck:
-      interval: ${HEALTHCHECK_INTERVAL}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: 30s
+      retries: 15
       test:
         - CMD-SHELL
-        - curl -s --fail --show-error localhost:${VTTABLET_WEB_PORT}/debug/health
-      timeout: ${HEALTHCHECK_TIMEOUT}
-    image: vitess/lite:${VITESS_VERSION}
+        - curl -s --fail --show-error localhost:8080/debug/health
+      timeout: 10s
+    image: vitess/lite:${VITESS_TAG:-latest}
+    platform: linux/amd64
     ports:
-      - ${VTTABLET102_WEB_PORT}:8080
-      - ${VTTABLET_GRPC_PORT}
-      - ${DB_PORT}
+      - 15102:8080
+      - "15999"
     volumes:
       - ./scripts:/script
-    networks:
-      - shared
-
   vttablet201:
     command:
       - sh
       - -c
       - /script/vttablet-up.sh 201
     depends_on:
-      - vtctld
+      vtctld:
+        condition: service_healthy
     environment:
-      - TOPOLOGY_FLAGS=${TOPOLOGY_FLAGS}
-      - WEB_PORT=${VTTABLET_WEB_PORT}
-      - GRPC_PORT=${VTTABLET_GRPC_PORT}
-      - CELL=${CELL}
-      - KEYSPACE=${VTTABLET201_KEYSPACE}
-      - SHARD=${VTTABLET201_SHARD}
-      - ROLE=${VTTABLET201_ROLE}
-      - VTHOST=${VTTABLET201_HOST}
-      - EXTERNAL_DB=${EXTERNAL_DB}
-      - DB_PORT=${DB_PORT}
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
-      - DB_CHARSET=${DB_CHARSET}
+      - VT_TOPO_IMPLEMENTATION=etcd2
+      - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+      - TOPOLOGY_FLAGS=--topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global
+      - WEB_PORT=8080
+      - GRPC_PORT=15999
+      - CELL=test
+      - KEYSPACE=test_keyspace
+      - SHARD=80-
+      - ROLE=primary
+      - VTHOST=vttablet201
+      - EXTERNAL_DB=0
+      - DB_PORT=
+      - DB_HOST=
+      - DB_USER=
+      - DB_PASS=
+      - DB_CHARSET=
     healthcheck:
-      interval: ${HEALTHCHECK_INTERVAL}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: 30s
+      retries: 15
       test:
         - CMD-SHELL
-        - curl -s --fail --show-error localhost:${VTTABLET_WEB_PORT}/debug/health
-      timeout: ${HEALTHCHECK_TIMEOUT}
-    image: vitess/lite:${VITESS_VERSION}
+        - curl -s --fail --show-error localhost:8080/debug/health
+      timeout: 10s
+    image: vitess/lite:${VITESS_TAG:-latest}
+    platform: linux/amd64
     ports:
-      - ${VTTABLET201_WEB_PORT}:8080
-      - ${VTTABLET_GRPC_PORT}
-      - ${DB_PORT}
+      - 15201:8080
+      - "15999"
     volumes:
       - ./scripts:/script
-    networks:
-      - shared
-
   vttablet202:
     command:
       - sh
       - -c
       - /script/vttablet-up.sh 202
     depends_on:
-      - vtctld
+      vtctld:
+        condition: service_healthy
     environment:
-      - TOPOLOGY_FLAGS=${TOPOLOGY_FLAGS}
-      - WEB_PORT=${VTTABLET_WEB_PORT}
-      - GRPC_PORT=${VTTABLET_GRPC_PORT}
-      - CELL=${CELL}
-      - KEYSPACE=${VTTABLET202_KEYSPACE}
-      - SHARD=${VTTABLET202_SHARD}
-      - ROLE=${VTTABLET202_ROLE}
-      - VTHOST=${VTTABLET202_HOST}
-      - EXTERNAL_DB=${EXTERNAL_DB}
-      - DB_PORT=${DB_PORT}
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
-      - DB_CHARSET=${DB_CHARSET}
+      - VT_TOPO_IMPLEMENTATION=etcd2
+      - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+      - TOPOLOGY_FLAGS=--topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global
+      - WEB_PORT=8080
+      - GRPC_PORT=15999
+      - CELL=test
+      - KEYSPACE=test_keyspace
+      - SHARD=80-
+      - ROLE=replica
+      - VTHOST=vttablet202
+      - EXTERNAL_DB=0
+      - DB_PORT=
+      - DB_HOST=
+      - DB_USER=
+      - DB_PASS=
+      - DB_CHARSET=
     healthcheck:
-      interval: ${HEALTHCHECK_INTERVAL}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: 30s
+      retries: 15
       test:
         - CMD-SHELL
-        - curl -s --fail --show-error localhost:${VTTABLET_WEB_PORT}/debug/health
-      timeout: ${HEALTHCHECK_TIMEOUT}
-    image: vitess/lite:${VITESS_VERSION}
+        - curl -s --fail --show-error localhost:8080/debug/health
+      timeout: 10s
+    image: vitess/lite:${VITESS_TAG:-latest}
+    platform: linux/amd64
     ports:
-      - ${VTTABLET202_WEB_PORT}:8080
-      - ${VTTABLET_GRPC_PORT}
-      - ${DB_PORT}
+      - 15202:8080
+      - "15999"
     volumes:
       - ./scripts:/script
-    networks:
-      - shared
-
   vttablet301:
     command:
       - sh
       - -c
       - /script/vttablet-up.sh 301
     depends_on:
-      - vtctld
+      vtctld:
+        condition: service_healthy
     environment:
-      - TOPOLOGY_FLAGS=${TOPOLOGY_FLAGS}
-      - WEB_PORT=${VTTABLET_WEB_PORT}
-      - GRPC_PORT=${VTTABLET_GRPC_PORT}
-      - CELL=${CELL}
-      - KEYSPACE=${VTTABLET301_KEYSPACE}
-      - SHARD=${VTTABLET301_SHARD}
-      - ROLE=${VTTABLET301_ROLE}
-      - VTHOST=${VTTABLET301_HOST}
-      - EXTERNAL_DB=${EXTERNAL_DB}
-      - DB_PORT=${DB_PORT}
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
-      - DB_CHARSET=${DB_CHARSET}
+      - VT_TOPO_IMPLEMENTATION=etcd2
+      - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+      - TOPOLOGY_FLAGS=--topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global
+      - WEB_PORT=8080
+      - GRPC_PORT=15999
+      - CELL=test
+      - KEYSPACE=lookup_keyspace
+      - SHARD=-
+      - ROLE=primary
+      - VTHOST=vttablet301
+      - EXTERNAL_DB=0
+      - DB_PORT=
+      - DB_HOST=
+      - DB_USER=
+      - DB_PASS=
+      - DB_CHARSET=
     healthcheck:
-      interval: ${HEALTHCHECK_INTERVAL}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: 30s
+      retries: 15
       test:
         - CMD-SHELL
-        - curl -s --fail --show-error localhost:${VTTABLET_WEB_PORT}/debug/health
-      timeout: ${HEALTHCHECK_TIMEOUT}
-    image: vitess/lite:${VITESS_VERSION}
+        - curl -s --fail --show-error localhost:8080/debug/health
+      timeout: 10s
+    image: vitess/lite:${VITESS_TAG:-latest}
+    platform: linux/amd64
     ports:
-      - ${VTTABLET301_WEB_PORT}:8080
-      - ${VTTABLET_GRPC_PORT}
-      - ${DB_PORT}
+      - 15301:8080
+      - "15999"
     volumes:
       - ./scripts:/script
-    networks:
-      - shared
-
   vttablet302:
     command:
       - sh
       - -c
       - /script/vttablet-up.sh 302
     depends_on:
-      - vtctld
+      vtctld:
+        condition: service_healthy
     environment:
-      - TOPOLOGY_FLAGS=${TOPOLOGY_FLAGS}
-      - WEB_PORT=${VTTABLET_WEB_PORT}
-      - GRPC_PORT=${VTTABLET_GRPC_PORT}
-      - CELL=${CELL}
-      - KEYSPACE=${VTTABLET302_KEYSPACE}
-      - SHARD=${VTTABLET302_SHARD}
-      - ROLE=${VTTABLET302_ROLE}
-      - VTHOST=${VTTABLET302_HOST}
-      - EXTERNAL_DB=${EXTERNAL_DB}
-      - DB_PORT=${DB_PORT}
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
-      - DB_CHARSET=${DB_CHARSET}
+      - VT_TOPO_IMPLEMENTATION=etcd2
+      - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+      - TOPOLOGY_FLAGS=--topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global
+      - WEB_PORT=8080
+      - GRPC_PORT=15999
+      - CELL=test
+      - KEYSPACE=lookup_keyspace
+      - SHARD=-
+      - ROLE=replica
+      - VTHOST=vttablet302
+      - EXTERNAL_DB=0
+      - DB_PORT=
+      - DB_HOST=
+      - DB_USER=
+      - DB_PASS=
+      - DB_CHARSET=
     healthcheck:
-      interval: ${HEALTHCHECK_INTERVAL}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: 30s
+      retries: 15
       test:
         - CMD-SHELL
-        - curl -s --fail --show-error localhost:${VTTABLET_WEB_PORT}/debug/health
-      timeout: ${HEALTHCHECK_TIMEOUT}
-    image: vitess/lite:${VITESS_VERSION}
+        - curl -s --fail --show-error localhost:8080/debug/health
+      timeout: 10s
+    image: vitess/lite:${VITESS_TAG:-latest}
+    platform: linux/amd64
     ports:
-      - ${VTTABLET302_WEB_PORT}:8080
-      - ${VTTABLET_GRPC_PORT}
-      - ${DB_PORT}
+      - 15302:8080
+      - "15999"
     volumes:
       - ./scripts:/script
-    networks:
-      - shared
-
-networks:
-  shared:
-    external: true
+version: "3.8"

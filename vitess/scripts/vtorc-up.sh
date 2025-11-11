@@ -19,68 +19,23 @@ set -u
 external=${EXTERNAL_DB:-0}
 web_port=${WEB_PORT:-'8080'}
 config=${VTORC_CONFIG:-/vt/vtorc/config.json}
-
-# External DB configuration
-db_host=${DB_HOST:-'localhost'}
-db_port=${DB_PORT:-3306}
-db_user=${DB_USER:-'root'}
-db_pass=${DB_PASS:-''}
-
-# Copy config file
-mkdir -p /vt/vtorc
-cp /script/configs/default.json /vt/vtorc/default.json
-
-# Update credentials based on database type
-if [ "$external" = "1" ]; then
-    echo "Configuring vtorc for external database at ${db_host}:${db_port}..."
-
-    # For external database, we need to ensure vtorc can connect
-    # Parse and update the config file with external database credentials
-
-    cp /vt/vtorc/default.json /vt/vtorc/config.json
-
-    # Since we don't have jq, we'll create a new config with proper settings
-    cat > /vt/vtorc/config.json <<EOF
-{
-  "Debug": false,
-  "ListenAddress": ":3000",
-  "MySQLOrchestratorHost": "${db_host}",
-  "MySQLOrchestratorPort": ${db_port},
-  "MySQLOrchestratorUser": "${db_user}",
-  "MySQLOrchestratorPassword": "${db_pass}",
-  "MySQLConnectTimeoutSeconds": 5,
-  "MySQLReadTimeoutSeconds": 30,
-  "MySQLWriteTimeoutSeconds": 30,
-  "MySQLMaxOpenConnections": 25,
-  "DefaultInstancePort": 3306,
-  "ReplicationLagQuery": "SELECT EXTRACT(EPOCH FROM (NOW() - pg_last_xact_replay_timestamp())) as lag",
-  "ReplicationLagMaxSeconds": 0,
-  "MaxPoolConnections": 3,
-  "Environments": null,
-  "EnableGTID": true,
-  "RecoverMasterClusterFilters": ["*"],
-  "RecoverIntermediateClusterFilters": ["*"],
-  "OnFailureDetectionProcesses": [],
-  "PreFailoverProcesses": [],
-  "PostFailoverProcesses": [],
-  "PostUnsuccessfulFailoverProcesses": [],
-  "PostMasterFailoverProcesses": [],
-  "PostIntermediateFailoverProcesses": []
-}
-EOF
-
-    echo "Updated vtorc config for external database"
+# Copy config directory
+cp -R /script/vtorc /vt
+# Update credentials
+if [ $external = 1 ] ; then
+    # Terrible substitution but we don't have jq in this image
+    # This can be overridden by passing VTORC_CONFIG env variable
+    echo "Updating $config..."
+    cp /vt/vtorc/default.json /vt/vtorc/tmp.json
+    cat /vt/vtorc/tmp.json
+    cp /vt/vtorc/tmp.json /vt/vtorc/config.json
 else
-    echo "Configuring vtorc for self-managed database..."
     cp /vt/vtorc/default.json /vt/vtorc/config.json
 fi
 
 echo "Starting vtorc..."
 exec /vt/bin/vtorc \
 $TOPOLOGY_FLAGS \
---logtostderr \
---alsologtostderr \
---config-path=/vt \
---config-name=vtorc/config \
---config-type=json \
---port $web_port
+--logtostderr=true \
+--port $web_port \
+--config $config

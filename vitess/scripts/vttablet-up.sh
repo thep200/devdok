@@ -29,13 +29,15 @@ uid=$1
 external=${EXTERNAL_DB:-0}
 
 # If DB is not explicitly set, we default to behaviour of prefixing with vt_
-# If there is an external db, the db_name will always match the keyspace name
+# If there is an external db, the db_nmae will always match the keyspace name
 [ $external = 0 ] && db_name=${DB:-"vt_$keyspace"} ||  db_name=${DB:-"$keyspace"}
 db_charset=${DB_CHARSET:-''}
 tablet_hostname=''
 
 # Use IPs to simplify connections when testing in docker.
 # Otherwise, blank hostname means the tablet auto-detects FQDN.
+# This is now set further up
+
 printf -v alias '%s-%010d' $CELL $uid
 printf -v tablet_dir 'vt_%010d' $uid
 
@@ -54,21 +56,27 @@ if [ $external = 1 ] && (( $uid % 100 == 0 )) ; then
     keyspace="ext_$keyspace"
 fi
 
-# Copy config file only if not using external database
-if [ $external = 0 ]; then
-    cp /script/sql/init_db.sql $VTROOT/config/init_db.sql
-    init_db_sql_file="$VTROOT/config/init_db.sql"
-    # Clear in-place edits of init_db_sql_file if any exist
-    sed -i '/##\[CUSTOM_SQL/{:a;N;/END\]##/!ba};//d' $init_db_sql_file
+# Copy config directory
+cp -R /script/configs $VTROOT
+cp /script/sql/init_db.sql $VTROOT/configs/
+init_db_sql_file="$VTROOT/configs/init_db.sql"
+# Clear in-place edits of init_db_sql_file if any exist
+sed -i '/##\[CUSTOM_SQL/{:a;N;/END\]##/!ba};//d' $init_db_sql_file
 
-    echo "##[CUSTOM_SQL_START]##" >> $init_db_sql_file
-    echo "##[CUSTOM_SQL_END]##" >> $init_db_sql_file
-    init_db_sql_file="$VTROOT/config/init_db.sql"
-else
-    init_db_sql_file=""
+echo "##[CUSTOM_SQL_START]##" >> $init_db_sql_file
+
+if [ "$external" = "1" ]; then
+  # We need a common user for the unmanaged and managed tablets else tools like orchestrator will not function correctly
+  echo "Creating matching user for managed tablets..."
+  echo "CREATE USER IF NOT EXISTS '$DB_USER'@'%' IDENTIFIED BY '$DB_PASS';" >> $init_db_sql_file
+  echo "GRANT ALL ON *.* TO '$DB_USER'@'%';" >> $init_db_sql_file
 fi
+echo "##[CUSTOM_SQL_END]##" >> $init_db_sql_file
+
+echo "##[CUSTOM_SQL_END]##" >> $init_db_sql_file
 
 mkdir -p $VTDATAROOT/backups
+
 
 export KEYSPACE=$keyspace
 export SHARD=$shard
@@ -83,33 +91,30 @@ export DB_NAME=$db_name
 # Delete socket files before running mysqlctld if exists.
 # This is the primary reason for unhealthy state on restart.
 # https://github.com/vitessio/vitess/pull/5115/files
-if [ $external = 0 ]; then
-    echo "Removing $VTDATAROOT/$tablet_dir/{mysql.sock,mysql.sock.lock}..."
-    rm -rf $VTDATAROOT/$tablet_dir/{mysql.sock,mysql.sock.lock}
-fi
+echo "Removing $VTDATAROOT/$tablet_dir/{mysql.sock,mysql.sock.lock}..."
+rm -rf $VTDATAROOT/$tablet_dir/{mysql.sock,mysql.sock.lock}
 
-# Create mysql instances only for self-managed database
-# When using external database, all tablets connect to the same external MySQL server
-if [ $external = 0 ]; then
-  echo "Initing mysql for tablet: $uid role: $role (self-managed database)"
+# Create mysql instances
+# Do not create mysql instance for primary if connecting to external mysql database
+#TODO: Remove underscore(_) flags in v25, replace them with dashed(-) notation
+if [[ $tablet_role != "externalprimary" ]]; then
+  echo "Initing mysql for tablet: $uid role: $role external: $external.. "
   $VTROOT/bin/mysqlctld \
   --init-db-sql-file=$init_db_sql_file \
   --logtostderr=true \
   --tablet-uid=$uid \
   &
-else
-  echo "Skipping mysqlctld initialization - using external MySQL database at $DB_HOST:$DB_PORT"
 fi
 
 sleep $sleeptime
 
 # Create the cell
 # https://vitess.io/blog/2020-04-27-life-of-a-cluster/
-$VTROOT/bin/vtctldclient --server vtctld:$GRPC_PORT AddCellInfo --root vitess/$CELL --server-address etcd1:2379 $CELL || true
+$VTROOT/bin/vtctldclient $TOPOLOGY_FLAGS --server vtctld:$GRPC_PORT AddCellInfo --root vitess/$CELL --server-address etcd1:2379 $CELL || true
 
-# Populate external db conditional args
-if [ "$tablet_role" = "externalprimary" ]; then
-    echo "Setting external db args for external primary: $DB_NAME"
+#Populate external db conditional args
+if [ $tablet_role = "externalprimary" ]; then
+    echo "Setting external db args for primary: $DB_NAME"
     external_db_args="--db-host $DB_HOST \
                       --db-port $DB_PORT \
                       --init-db-name-override $DB_NAME \
@@ -132,34 +137,14 @@ if [ "$tablet_role" = "externalprimary" ]; then
                       --track-schema-versions=true \
                       --vreplication-tablet-type=primary \
                       --watch-replication-stream=true"
-elif [ "$external" = "1" ]; then
-    # For managed tablets using external database
-    echo "Setting external db args for managed tablet: $DB_NAME"
-    external_db_args="--db-host $DB_HOST \
-                      --db-port $DB_PORT \
-                      --init-db-name-override $DB_NAME \
-                      --init-tablet-type $tablet_type \
-                      --db-app-user $DB_USER \
-                      --db-app-password $DB_PASS \
-                      --db-allprivs-user $DB_USER \
-                      --db-allprivs-password $DB_PASS \
-                      --db-appdebug-user $DB_USER \
-                      --db-appdebug-password $DB_PASS \
-                      --db-dba-user $DB_USER \
-                      --db-dba-password $DB_PASS \
-                      --db-filtered-user $DB_USER \
-                      --db-filtered-password $DB_PASS \
-                      --db-repl-user $DB_USER \
-                      --db-repl-password $DB_PASS \
-                      --enable-replication-reporter=true"
 else
-    # For self-managed database replicas
-    echo "Setting args for self-managed tablet: $DB_NAME"
     external_db_args="--init-db-name-override $DB_NAME \
                       --init-tablet-type $tablet_type \
-                      --enable-replication-reporter=true"
+                      --enable-replication-reporter=true \
+                      --restore-from-backup"
 fi
 
+#TODO: Remove underscore(_) flags in v25, replace them with dashed(-) notation
 echo "Starting vttablet..."
 exec $VTROOT/bin/vttablet \
   $TOPOLOGY_FLAGS \
