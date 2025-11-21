@@ -1,0 +1,17 @@
+{
+  "Debug": false,
+  "EnableSyslog": false,
+  "SQLite3DataFile": "/vt/vtdataroot/vtorc.db",
+  "InstancePollSeconds": 5,
+  "RecoveryPeriodBlockSeconds": 5,
+  "PreventCrossDataCenterPrimaryFailover": false,
+  "RaftEnabled": false,
+  "RaftDataDir": "/vt/vtdataroot/vtorc",
+  "DefaultRaftPort": 10008,
+  "SnapshotTopologiesIntervalHours": 0,
+  "ReasonableMaintenanceReplicationLagSeconds": 20,
+  "AuditLogFile": "/vt/vtdataroot/vtorc-audit.log",
+  "AuditToBackendDB": false,
+  "AuditToSyslog": false,
+  "AuditPurgeDays": 7
+}

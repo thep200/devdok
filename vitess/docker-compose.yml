@@ -154,7 +154,7 @@ services:
     command:
       - sh
       - -c
-      - "/script/run-forever.sh /vt/bin/vtgate --topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global --logtostderr=true --port 8080 --grpc-port 15999 --mysql-server-port 15306 --mysql-auth-server-impl none --cell test --cells-to-watch test --tablet-types-to-wait PRIMARY,REPLICA,RDONLY --service-map 'grpc-vtgateservice' --normalize-queries=true --disable-throttler "
+      - "/script/run-forever.sh /vt/bin/vtgate --topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global --logtostderr=true --port 8080 --grpc-port 15999 --mysql-server-port 15306 --mysql-auth-server-impl none --cell test --cells-to-watch test --tablet-types-to-wait PRIMARY,REPLICA,RDONLY --service-map 'grpc-vtgateservice' --normalize-queries=true"
     depends_on:
       - vtctld
     image: vitess/lite:${VITESS_TAG:-latest}
@@ -168,29 +168,35 @@ services:
     environment:
       - VT_TOPO_IMPLEMENTATION=etcd2
       - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
-
-  # vtorc:
-  #   command:
-  #     - sh
-  #     - -c
-  #     - /script/vtorc-up.sh
-  #   depends_on:
-  #     - vtctld
-  #     - set_keyspace_durability_policy
-  #   environment:
-  #     - VT_TOPO_IMPLEMENTATION=etcd2
-  #     - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
-  #     - TOPOLOGY_FLAGS=--topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global
-  #     - WEB_PORT=8080
-  #     - EXTERNAL_DB=0
-  #     - DB_USER=
-  #     - DB_PASS=
-  #   image: vitess/lite:${VITESS_TAG:-latest}
-  #   platform: linux/amd64
-  #   ports:
-  #     - 13000:8080
-  #   volumes:
-  #     - ./scripts:/script
+  vtorc:
+    command:
+      - sh
+      - -c
+      - /script/vtorc-up.sh
+    depends_on:
+      vtctld:
+        condition: service_healthy
+      vttablet101:
+        condition: service_healthy
+      vttablet201:
+        condition: service_healthy
+      vttablet301:
+        condition: service_healthy
+    environment:
+      - VT_TOPO_IMPLEMENTATION=etcd2
+      - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+      - TOPOLOGY_FLAGS=--topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global
+      - WEB_PORT=8080
+      - EXTERNAL_DB=0
+      - DB_USER=
+      - DB_PASS=
+    image: vitess/lite:${VITESS_TAG:-latest}
+    platform: linux/amd64
+    ports:
+      - 13000:8080
+    volumes:
+      - ./scripts:/script
+    restart: unless-stopped
   vttablet101:
     command:
       - sh
@@ -221,7 +227,7 @@ services:
       retries: 15
       test:
         - CMD-SHELL
-        - curl -s --fail --show-error localhost:8080/debug/health
+        - curl -f http://localhost:8080/debug/status
       timeout: 10s
     image: vitess/lite:${VITESS_TAG:-latest}
     platform: linux/amd64
@@ -260,7 +266,7 @@ services:
       retries: 15
       test:
         - CMD-SHELL
-        - curl -s --fail --show-error localhost:8080/debug/health
+        - curl -f http://localhost:8080/debug/status
       timeout: 10s
     image: vitess/lite:${VITESS_TAG:-latest}
     platform: linux/amd64
@@ -299,7 +305,7 @@ services:
       retries: 15
       test:
         - CMD-SHELL
-        - curl -s --fail --show-error localhost:8080/debug/health
+        - curl -f http://localhost:8080/debug/status
       timeout: 10s
     image: vitess/lite:${VITESS_TAG:-latest}
     platform: linux/amd64
@@ -338,7 +344,7 @@ services:
       retries: 15
       test:
         - CMD-SHELL
-        - curl -s --fail --show-error localhost:8080/debug/health
+        - curl -f http://localhost:8080/debug/status
       timeout: 10s
     image: vitess/lite:${VITESS_TAG:-latest}
     platform: linux/amd64
@@ -377,7 +383,7 @@ services:
       retries: 15
       test:
         - CMD-SHELL
-        - curl -s --fail --show-error localhost:8080/debug/health
+        - curl -f http://localhost:8080/debug/status
       timeout: 10s
     image: vitess/lite:${VITESS_TAG:-latest}
     platform: linux/amd64
@@ -416,7 +422,7 @@ services:
       retries: 15
       test:
         - CMD-SHELL
-        - curl -s --fail --show-error localhost:8080/debug/health
+        - curl -f http://localhost:8080/debug/status
       timeout: 10s
     image: vitess/lite:${VITESS_TAG:-latest}
     platform: linux/amd64
@@ -425,4 +431,41 @@ services:
       - "15999"
     volumes:
       - ./scripts:/script
+  vtadmin-api:
+    command:
+      - sh
+      - -c
+      - '/vt/bin/vtadmin --addr :14200 --http-origin http://localhost:14201 --http-tablet-url-tmpl "http://localhost:15{{ .Tablet.Alias.Uid }}" --logtostderr --rbac --rbac-config=/vt/config/vtadmin/rbac.yaml --cluster id=local,name=local,discovery=staticfile,discovery-staticfile-path=/vt/config/vtadmin/discovery.json,tablet-fqdn-tmpl="http://localhost:15{{ .Tablet.Alias.Uid }}"'
+    depends_on:
+      - vtctld
+      - vtgate
+    image: vitess/lite:${VITESS_TAG:-latest}
+    platform: linux/amd64
+    ports:
+      - "14200:14200"
+    volumes:
+      - ./scripts:/vt/config
+    environment:
+      - VT_TOPO_IMPLEMENTATION=etcd2
+      - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+  vtadmin-web:
+    image: node:18-alpine
+    platform: linux/amd64
+    working_dir: /app
+    command:
+      - sh
+      - -c
+      - |
+        echo "Installing serve..."
+        npm install -g serve
+        echo "Starting VTAdmin Web UI proxy..."
+        serve /app -p 14201 --cors
+    depends_on:
+      - vtadmin-api
+    ports:
+      - "14201:14201"
+    volumes:
+      - ./vtadmin-web:/app
+    environment:
+      - VTADMIN_API_URL=http://localhost:14200
 version: "3.8"

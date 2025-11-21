@@ -16,26 +16,17 @@
 
 set -u
 
-external=${EXTERNAL_DB:-0}
 web_port=${WEB_PORT:-'8080'}
-config=${VTORC_CONFIG:-/vt/vtorc/config.json}
-# Copy config directory
-cp -R /script/vtorc /vt
-# Update credentials
-if [ $external = 1 ] ; then
-    # Terrible substitution but we don't have jq in this image
-    # This can be overridden by passing VTORC_CONFIG env variable
-    echo "Updating $config..."
-    cp /vt/vtorc/default.json /vt/vtorc/tmp.json
-    cat /vt/vtorc/tmp.json
-    cp /vt/vtorc/tmp.json /vt/vtorc/config.json
-else
-    cp /vt/vtorc/default.json /vt/vtorc/config.json
-fi
+
+# Create data directory
+mkdir -p /vt/vtdataroot/vtorc
 
 echo "Starting vtorc..."
 exec /vt/bin/vtorc \
 $TOPOLOGY_FLAGS \
 --logtostderr=true \
 --port $web_port \
---config $config
+--sqlite-data-file /vt/vtdataroot/vtorc.db \
+--instance-poll-time 5s \
+--topo-information-refresh-duration 15s \
+--prevent-cross-cell-failover=false
