@@ -40,10 +40,10 @@ When starting with no existing data:
 
 2. **REQUIRED**: Initialize cluster (sets durability policies + elects primaries):
    ```bash
-   ./init-cluster.sh
+   ./scripts/init-cluster.sh
    ```
 
-   ⚠️ **CRITICAL**: You **MUST** run `./init-cluster.sh` after:
+   ⚠️ **CRITICAL**: You **MUST** run `./scripts/init-cluster.sh` after:
    - First time setup
    - Running `docker-compose down -v` (which deletes all etcd data)
    - Any time tablets remain in NOT_SERVING state after 60 seconds
@@ -62,9 +62,9 @@ When starting with no existing data:
    - VTCtld debug UI: http://localhost:15000/debug/status
    - Tablet web UIs: http://localhost:15101 (vttablet101), etc.
 
-**Important**: The `init-cluster.sh` script must be run after starting containers to elect primary tablets for each shard. Without this, tablets will remain in `NOT_SERVING` state.
+**Important**: The `scripts/init-cluster.sh` script must be run after starting containers to elect primary tablets for each shard. Without this, tablets will remain in `NOT_SERVING` state.
 
-**Note on Restarts**: After a restart, tablets usually restore their state automatically from etcd topology. However, if they remain in NOT_SERVING state after 60 seconds, run `./init-cluster.sh` again. See `RESTART_FIX.md` for details on the health check improvements made to handle restarts gracefully.
+**Note on Restarts**: After a restart, tablets usually restore their state automatically from etcd topology. However, if they remain in NOT_SERVING state after 60 seconds, run `./scripts/init-cluster.sh` again.
 
 ## Architecture
 

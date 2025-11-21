@@ -37,10 +37,10 @@ docker-compose up -d
 docker-compose ps
 
 # 3. Initialize cluster (REQUIRED - sets policies and elects primaries)
-./init-cluster.sh
+./scripts/init-cluster.sh
 ```
 
-**Important**: `./init-cluster.sh` is **REQUIRED** after:
+**Important**: `./scripts/init-cluster.sh` is **REQUIRED** after:
 - First time setup
 - Running `docker-compose down -v` (which deletes all data)
 - Any situation where etcd data is lost
@@ -57,10 +57,10 @@ docker-compose down
 docker-compose up -d
 
 # Usually cluster restores automatically, but if tablets remain NOT_SERVING after 60s:
-./init-cluster.sh
+./scripts/init-cluster.sh
 ```
 
-## What `init-cluster.sh` Does
+## What scripts/init-cluster.sh Does
 
 The initialization script performs these critical steps:
 
@@ -158,7 +158,7 @@ docker-compose down
 docker-compose down -v
 ```
 
-**Warning**: After `docker-compose down -v`, you must run `./init-cluster.sh` to reinitialize.
+**Warning**: After `docker-compose down -v`, you must run `./scripts/init-cluster.sh` to reinitialize.
 
 ## Troubleshooting
 
@@ -168,7 +168,7 @@ Wait 30-40 seconds for health checks to pass. The health check uses `/debug/stat
 ### Tablets in NOT_SERVING state
 Run the initialization script:
 ```bash
-./init-cluster.sh
+./scripts/init-cluster.sh
 ```
 
 ### VTOrc logs "ignoring keyspace because no durability_policy is set"
@@ -178,12 +178,12 @@ This means durability policies weren't set. Fix by running:
 ./scripts/lvtctl.sh SetKeyspaceDurabilityPolicy --durability-policy=none lookup_keyspace
 ```
 
-Or simply run `./init-cluster.sh` which sets these automatically.
+Or simply run `./scripts/init-cluster.sh` which sets these automatically.
 
 ### Can't connect to MySQL on port 15306
 1. Check VTGate is running: `docker-compose ps vtgate`
 2. Check tablets are SERVING: `./scripts/lvtctl.sh GetTablets`
-3. If tablets are NOT_SERVING, run: `./init-cluster.sh`
+3. If tablets are NOT_SERVING, run: `./scripts/init-cluster.sh`
 
 ## Development Workflow
 
@@ -214,10 +214,6 @@ docker-compose start vttablet101
 ## Documentation
 
 - **CLAUDE.md**: Comprehensive guide for AI assistants
-- **RESTART_FIX.md**: Details on health check improvements
-- **VTORC_INFO.md**: VTOrc configuration and failover testing
-- **VTADMIN_API.md**: VTAdmin REST API documentation
-- **VTADMIN_WEB_UI.md**: Web interface guide
 - **.env.example**: All configuration variables
 
 ## Environment Variables
@@ -230,7 +226,7 @@ Copy `.env.example` to `.env` to customize:
 
 ## Important Notes
 
-1. **Always run `./init-cluster.sh` after `docker-compose down -v`**
+1. **Always run `./scripts/init-cluster.sh` after `docker-compose down -v`**
 2. Health checks pass when vttablet process is running (even if NOT_SERVING)
 3. VTOrc requires durability policies to be set on all keyspaces
 4. The cluster stores state in etcd - removing volumes requires reinitialization
