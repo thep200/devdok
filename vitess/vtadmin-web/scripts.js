@@ -187,13 +187,130 @@ async function renderClusterDetails(cluster) {
         // Fetch related data
         const keyspacesData = await fetchAPI('/keyspaces');
         const tabletsData = await fetchAPI('/tablets');
+        const gatesData = await fetchAPI('/gates').catch(() => ({ gates: [] }));
 
         const clusterKeyspaces = keyspacesData.keyspaces?.filter(ks => ks.cluster.id === cluster.id) || [];
         const clusterTablets = tabletsData.tablets?.filter(t => t.cluster.id === cluster.id) || [];
+        const clusterGates = gatesData.gates?.filter(g => g.cluster?.id === cluster.id) || [];
 
         return `
             <div class="card">
                 <h3>${cluster.name} - Details</h3>
+
+                ${clusterGates.length > 0 ? `
+                    <div class="card-section">
+                        <h4>VTGate Instances</h4>
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Hostname</th>
+                                        <th>Pool</th>
+                                        <th>Debug Links</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${clusterGates.map(gate => {
+                                        const hostname = gate.hostname || 'localhost';
+                                        const pool = gate.pool || 'default';
+                                        // VTGate is exposed on port 15099 (from docker-compose)
+                                        const vtgatePort = 15099;
+                                        return `
+                                            <tr>
+                                                <td><strong>${hostname}</strong></td>
+                                                <td><span class="badge badge-info">${pool}</span></td>
+                                                <td>
+                                                    <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                                        <a href="http://localhost:${vtgatePort}/debug/status" class="btn btn-small btn-primary" title="VTGate Status" onclick="window.open(this.href); return false;">
+                                                            Status
+                                                        </a>
+                                                        <a href="http://localhost:${vtgatePort}/debug/vars" class="btn btn-small btn-secondary" title="VTGate Variables" onclick="window.open(this.href); return false;">
+                                                            Vars
+                                                        </a>
+                                                        <a href="http://localhost:${vtgatePort}/queryz" class="btn btn-small btn-success" title="Query Statistics" onclick="window.open(this.href); return false;">
+                                                            Queryz
+                                                        </a>
+                                                        <a href="http://localhost:${vtgatePort}/debug/env" class="btn btn-small" style="background: #9b59b6; color: white;" title="Environment" onclick="window.open(this.href); return false;">
+                                                            Env
+                                                        </a>
+                                                        <a href="http://localhost:${vtgatePort}/varz" class="btn btn-small" style="background: #e67e22; color: white;" title="Variables" onclick="window.open(this.href); return false;">
+                                                            Varz
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                ` : `
+                    <div class="card-section">
+                        <h4>VTGate Instance</h4>
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Component</th>
+                                        <th>Port</th>
+                                        <th>Debug Links</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>VTGate</strong></td>
+                                        <td><span class="badge badge-info">15099</span></td>
+                                        <td>
+                                            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                                <a href="http://localhost:15099/debug/status" class="btn btn-small btn-primary" title="VTGate Status" onclick="window.open(this.href); return false;">
+                                                    Status
+                                                </a>
+                                                <a href="http://localhost:15099/debug/vars" class="btn btn-small btn-secondary" title="VTGate Variables" onclick="window.open(this.href); return false;">
+                                                    Vars
+                                                </a>
+                                                <a href="http://localhost:15099/queryz" class="btn btn-small btn-success" title="Query Statistics" onclick="window.open(this.href); return false;">
+                                                    Queryz
+                                                </a>
+                                                <a href="http://localhost:15099/debug/env" class="btn btn-small" style="background: #9b59b6; color: white;" title="Environment" onclick="window.open(this.href); return false;">
+                                                    Env
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>VTCtld</strong></td>
+                                        <td><span class="badge badge-info">15000</span></td>
+                                        <td>
+                                            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                                <a href="http://localhost:15000/debug/status" class="btn btn-small btn-primary" title="VTCtld Status" onclick="window.open(this.href); return false;">
+                                                    Status
+                                                </a>
+                                                <a href="http://localhost:15000/debug/vars" class="btn btn-small btn-secondary" title="VTCtld Variables" onclick="window.open(this.href); return false;">
+                                                    Vars
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>VTOrc</strong></td>
+                                        <td><span class="badge badge-info">13000</span></td>
+                                        <td>
+                                            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                                <a href="http://localhost:13000/debug/status" class="btn btn-small btn-primary" title="VTOrc Status" onclick="window.open(this.href); return false;">
+                                                    Status
+                                                </a>
+                                                <a href="http://localhost:13000/api/clusters" class="btn btn-small btn-success" title="Clusters Info" onclick="window.open(this.href); return false;">
+                                                    Clusters
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `}
 
                 ${clusterKeyspaces.length > 0 ? `
                     <div class="card-section">
@@ -366,8 +483,8 @@ function renderTabletsTable(keyspace, tablets) {
                             <th>Type</th>
                             <th>State</th>
                             <th>Hostname</th>
-                            <th>Port</th>
-                            <th>Actions</th>
+                            <th>Ports</th>
+                            <th>Debug Links</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -381,6 +498,23 @@ function renderTabletsTable(keyspace, tablets) {
         const stateClass = t.state === 1 ? 'badge-success' : 'badge-warning';
         const statusIndicator = t.state === 1 ? 'serving' : 'not-serving';
 
+        // Extract ports and tablet UID
+        const vtPort = t.tablet.port_map?.vt || null;
+        const grpcPort = t.tablet.port_map?.grpc || null;
+        const tabletUID = t.tablet.alias.uid;
+
+        // Map tablet UID to exposed port (from docker-compose)
+        const tabletPortMap = {
+            101: 15101,
+            102: 15102,
+            201: 15201,
+            202: 15202,
+            301: 15301,
+            302: 15302
+        };
+
+        const exposedPort = tabletPortMap[tabletUID] || vtPort;
+
         html += `
             <tr>
                 <td>
@@ -393,11 +527,29 @@ function renderTabletsTable(keyspace, tablets) {
                     <span class="badge ${stateClass}">${state}</span>
                 </td>
                 <td>${t.tablet.hostname}</td>
-                <td>${t.tablet.port_map?.vt || 'N/A'}</td>
                 <td>
-                    ${t.tablet.port_map?.vt ?
-                        `<a href="http://${t.tablet.hostname}:${t.tablet.port_map.vt}/debug/status" target="_blank" class="btn btn-small btn-secondary">View</a>` :
-                        ''}
+                    ${vtPort ? `<div><span class="badge badge-info">VT: ${vtPort}</span></div>` : ''}
+                    ${grpcPort ? `<div><span class="badge badge-info">gRPC: ${grpcPort}</span></div>` : ''}
+                    ${exposedPort ? `<div><span class="badge badge-success">Exposed: ${exposedPort}</span></div>` : ''}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                        ${exposedPort ?
+                            `<a href="http://localhost:${exposedPort}/debug/status" class="btn btn-small btn-primary" title="Tablet Status" onclick="window.open(this.href); return false;">
+                                Status
+                            </a>` :
+                            ''}
+                        ${exposedPort ?
+                            `<a href="http://localhost:${exposedPort}/debug/vars" class="btn btn-small btn-secondary" title="Tablet Variables" onclick="window.open(this.href); return false;">
+                                Vars
+                            </a>` :
+                            ''}
+                        ${exposedPort ?
+                            `<a href="http://localhost:${exposedPort}/debug/health" class="btn btn-small btn-success" title="Health Check" onclick="window.open(this.href); return false;">
+                                Health
+                            </a>` :
+                            ''}
+                    </div>
                 </td>
             </tr>
         `;
