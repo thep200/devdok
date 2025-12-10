@@ -403,6 +403,123 @@ services:
       - "15999"
     volumes:
       - ./scripts:/script
+  # vttablet401:
+  #   command:
+  #     - sh
+  #     - -c
+  #     - /script/vttablet-up.sh 401
+  #   depends_on:
+  #     vtctld:
+  #       condition: service_healthy
+  #   environment:
+  #     - VT_TOPO_IMPLEMENTATION=etcd2
+  #     - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+  #     - TOPOLOGY_FLAGS=--topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global
+  #     - WEB_PORT=8080
+  #     - GRPC_PORT=15999
+  #     - CELL=test
+  #     - KEYSPACE=tutorial
+  #     - SHARD=0
+  #     - ROLE=primary
+  #     - VTHOST=vttablet401
+  #     - EXTERNAL_DB=0
+  #     - DB_PORT=
+  #     - DB_HOST=
+  #     - DB_USER=
+  #     - DB_PASS=
+  #     - DB_CHARSET=
+  #   healthcheck:
+  #     interval: 30s
+  #     retries: 15
+  #     test:
+  #       - CMD-SHELL
+  #       - curl -f http://localhost:8080/debug/status
+  #     timeout: 10s
+  #   image: vitess/lite:${VITESS_TAG:-latest}
+  #   platform: linux/amd64
+  #   ports:
+  #     - 15401:8080
+  #     - "15999"
+  #   volumes:
+  #     - ./scripts:/script
+  # vttablet402:
+  #   command:
+  #     - sh
+  #     - -c
+  #     - /script/vttablet-up.sh 402
+  #   depends_on:
+  #     vtctld:
+  #       condition: service_healthy
+  #   environment:
+  #     - VT_TOPO_IMPLEMENTATION=etcd2
+  #     - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+  #     - TOPOLOGY_FLAGS=--topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global
+  #     - WEB_PORT=8080
+  #     - GRPC_PORT=15999
+  #     - CELL=test
+  #     - KEYSPACE=tutorial
+  #     - SHARD=0
+  #     - ROLE=replica
+  #     - VTHOST=vttablet402
+  #     - EXTERNAL_DB=0
+  #     - DB_PORT=
+  #     - DB_HOST=
+  #     - DB_USER=
+  #     - DB_PASS=
+  #     - DB_CHARSET=
+  #   healthcheck:
+  #     interval: 30s
+  #     retries: 15
+  #     test:
+  #       - CMD-SHELL
+  #       - curl -f http://localhost:8080/debug/status
+  #     timeout: 10s
+  #   image: vitess/lite:${VITESS_TAG:-latest}
+  #   platform: linux/amd64
+  #   ports:
+  #     - 15402:8080
+  #     - "15999"
+  #   volumes:
+  #     - ./scripts:/script
+  # vttablet403:
+  #   command:
+  #     - sh
+  #     - -c
+  #     - /script/vttablet-up.sh 403
+  #   depends_on:
+  #     vtctld:
+  #       condition: service_healthy
+  #   environment:
+  #     - VT_TOPO_IMPLEMENTATION=etcd2
+  #     - VT_TOPO_GLOBAL_SERVER_ADDRESS=etcd1:2379
+  #     - TOPOLOGY_FLAGS=--topo-implementation etcd2 --topo-global-server-address etcd1:2379 --topo-global-root vitess/global
+  #     - WEB_PORT=8080
+  #     - GRPC_PORT=15999
+  #     - CELL=test
+  #     - KEYSPACE=tutorial
+  #     - SHARD=0
+  #     - ROLE=replica
+  #     - VTHOST=vttablet403
+  #     - EXTERNAL_DB=0
+  #     - DB_PORT=
+  #     - DB_HOST=
+  #     - DB_USER=
+  #     - DB_PASS=
+  #     - DB_CHARSET=
+  #   healthcheck:
+  #     interval: 30s
+  #     retries: 15
+  #     test:
+  #       - CMD-SHELL
+  #       - curl -f http://localhost:8080/debug/status
+  #     timeout: 10s
+  #   image: vitess/lite:${VITESS_TAG:-latest}
+  #   platform: linux/amd64
+  #   ports:
+  #     - 15403:8080
+  #     - "15999"
+  #   volumes:
+  #     - ./scripts:/script
   vtadmin-api:
     command:
       - sh
