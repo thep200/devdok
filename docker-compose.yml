@@ -26,6 +26,8 @@ volumes:
     driver: local
   rabbitmq_data:
     driver: local
+  clickhouse_data:
+    driver: local
 
 services:
   # Redis #####################################################
@@ -108,6 +110,34 @@ services:
     networks:
       - internal
       - shared
+
+  # ClickHouse ################################################
+  clickhouse:
+    container_name: clickhouse
+    restart: always
+    build:
+      context: ./database/clickhouse
+      args:
+        - CLICKHOUSE_VERSION=${CLICKHOUSE_VERSION:-latest}
+    ports:
+      - "${CLICKHOUSE_HTTP_PORT:-8123}:8123"
+      - "${CLICKHOUSE_NATIVE_PORT:-9000}:9000"
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-default}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+      - CLICKHOUSE_PASSWORD_SHA256=${CLICKHOUSE_PASSWORD_SHA256}
+      - CLICKHOUSE_USER_PASSWORD_SHA256=${CLICKHOUSE_USER_PASSWORD_SHA256}
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    networks:
+      - internal
+      - shared
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
 
   # Kafka ####################################################
   kafka:
