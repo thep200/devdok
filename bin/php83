@@ -5,7 +5,7 @@ depth=2
 # Command
 command="php -v"
 # Container id
-phpContainer="phpfpm"
+phpContainer="phpfpm83"
 # Parameter
 firstParam="run"
 
