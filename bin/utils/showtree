@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+
+# Colors
+BOLD='\033[1m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+function showtree() {
+    # Constants
+    local MAX_DEPTH=5
+    local EXCLUDE_DIRS=("vendor" "node_modules")
+    local TARGET_DIR="."
+
+    function usage() {
+        echo -e "${BOLD}Usage:${NC} showtree [options] [folder]"
+        echo -e "${BOLD}Options:${NC}"
+        echo -e "  ${GREEN}-d <depth>${NC}   Specify the tree depth to display (default: 5)"
+        echo -e "  ${GREEN}-e <folders>${NC} Comma-separated list of folders to exclude (e.g. vendor,node_modules)"
+        echo -e "  ${GREEN}-f <folder>${NC}  Specify the folder to generate the tree (takes precedence over a trailing argument)"
+        echo -e "  ${GREEN}-h <help>${NC}    Show this help message"
+        echo
+        echo -e "${YELLOW}Example:${NC}"
+        echo -e "  showtree -d 3 -e \"vendor,node_modules\" -f ./src"
+        echo -e "  showtree -f ./my_folder"
+        return 0
+    }
+
+    # Handle options
+    local OPTIND opt
+    while getopts "d:e:f:h" opt; do
+        case "$opt" in
+            d)
+                MAX_DEPTH="$OPTARG"
+                ;;
+            e)
+                # Split string to array to pass to EXCLUDE_DIRS
+                IFS=',' read -r -a EXCLUDE_DIRS <<< "$OPTARG"
+                ;;
+            f)
+                TARGET_DIR="$OPTARG"
+                ;;
+            h)
+                usage
+                return 0
+                ;;
+            \?)
+                echo "Tham số không hợp lệ."
+                usage
+                return 1
+                ;;
+        esac
+    done
+
+    # Clean all options
+    shift $((OPTIND - 1))
+
+    # Handle last argument
+    if [ -n "$1" ]; then
+        if [ "$TARGET_DIR" = "." ]; then
+            TARGET_DIR="$1"
+        else
+            echo "Warning: You used -f $TARGET_DIR, so will ignore argument $1"
+        fi
+    fi
+
+    function generate_tree() {
+        local dir="$1"
+        local prefix="$2"
+        local depth="$3"
+
+        # Stop if reached max depth
+        if [ "$depth" -ge "$MAX_DEPTH" ]; then
+            return
+        fi
+
+        local items="$(find "$dir" -maxdepth 1 -mindepth 1 ! -name ".*" 2>/dev/null | sort)"
+
+        # Check if items is empty
+        if [ -z "$items" ]; then
+            return
+        fi
+
+        local total="$(echo "$items" | wc -l | tr -d ' ')"
+        local count=1
+
+        while IFS= read -r item; do
+            local item_name="$(command basename "$item")"
+
+            # Check if item_name is in EXCLUDE_DIRS
+            local skip=false
+            for ex in "${EXCLUDE_DIRS[@]}"; do
+                if [ "$item_name" = "$ex" ]; then
+                    skip=true
+                    break
+                fi
+            done
+
+            # Ignore if folder is in EXCLUDE_DIRS
+            if [ "$skip" = true ]; then
+                ((count++))
+                continue
+            fi
+
+            # Print prefix
+            local icon="├─"
+            if [ $count -eq $total ]; then
+                icon="└─"
+            fi
+
+            # Folder
+            if [ -d "$item" ]; then
+                printf "%s%s %s/\n" "$prefix" "$icon" "$item_name"
+                if [ "$depth" -lt "$((MAX_DEPTH - 1))" ]; then
+                    local new_prefix="${prefix}│  "
+                    if [ $count -eq $total ]; then
+                        new_prefix="${prefix}   "
+                    fi
+                    generate_tree "$item" "$new_prefix" $((depth + 1))
+                fi
+            else
+                printf "%s%s %s\n" "$prefix" "$icon" "$item_name"
+            fi
+
+            ((count++))
+        done <<< "$items"
+    }
+
+    # Generate
+    echo "${TARGET_DIR}/"
+    generate_tree "$TARGET_DIR" "" 0
+}
+
+# Run directly if script is executed (not sourced)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    showtree "$@"
+fi
