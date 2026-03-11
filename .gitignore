@@ -2,3 +2,4 @@
 vitess-root
 .DS_Store
 /logs/nginx/*.log
+/logs/nginx/*.log.*
