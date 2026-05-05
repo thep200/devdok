@@ -1,0 +1,94 @@
+# Cassandra configuration file
+#
+# For help documentation see
+# https://cassandra.apache.org/doc/latest/cassandra/configuration/cass_yaml_file.html
+
+# The name of the cluster.
+cluster_name: "Test Cluster"
+
+# This defines the number of tokens randomly assigned to this node on the ring.
+# This value is ignored if num_tokens is specified in the cassandra-topology.properties file
+# Default for this single-node setup: num_tokens will be set to max(1, num_tokens).
+num_tokens: 256
+
+# Seed nodes for the cluster.
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
+
+# Address or hostname that other Cassandra nodes use to connect to this node.
+# This is also the value that other nodes will use to contact this node if they
+# are configured to use seeds in their seed list to bootstrap.
+listen_address: 0.0.0.0
+
+# The address to bind the RPC interface to.
+rpc_address: 0.0.0.0
+
+# Broadcast address tells the node what address to advertise its gossip protocol
+# address to other Cassandra nodes.
+broadcast_address: 127.0.0.1
+
+# Broadcast RPC address for client connections.
+broadcast_rpc_address: 127.0.0.1
+
+# Native transport port (port used for CQL clients)
+native_transport_port: 9042
+
+# RPC port (for Thrift)
+rpc_port: 9160
+
+# SSL configuration for RPC connections
+# rpc_interface_prefer_ipv6: false
+
+# Partitioner
+# https://cassandra.apache.org/doc/latest/cassandra/architecture/dynamo.html#partitioning
+partitioner: org.apache.cassandra.dht.Murmur3Partitioner
+
+# Replication strategy for system keyspaces
+replica_placement_strategy: org.apache.cassandra.locator.SimpleStrategy
+
+# replication factor for system keyspaces
+system_keyspaces_replication_factor: 1
+
+# Maximum allowed authentication attempts
+max_hint_window_in_ms: 10800000 # 3 hours
+
+# Define the nodes role. Default: cassandra
+# roles_validity_in_ms: 2000
+# permissions_validity_in_ms: 2000
+
+# Datacenter and Rack
+# Set this to the rack to use if your topology service doesn't have a Node object
+# in the topology.yaml file.  This is NOT recommended under any circumstances
+# because this ignores the specified topology.xml.
+endpoint_snitch: SimpleSnitch
+
+# Snapshot configuration
+auto_snapshot: true
+snapshot_before_compact: false
+snapshot_recovery_window_in_hours: 168
+
+# Read repair frequency
+read_repair_chance: 0.0
+
+# Hinted handoff settings
+hinted_handoff_enabled: true
+
+# Global memtable size limit and commit log sizes
+memtable_total_space_in_mb: 2048
+commitlog_total_space_in_mb: 8192
+
+# GC Grace setting
+gc_grace_seconds: 864000
+
+# Authenticator and Authorizer
+# authenticator: org.apache.cassandra.auth.PasswordAuthenticator
+# authorizer: org.apache.cassandra.auth.CassandraAuthorizer
+
+# Logging
+server_encryption_options:
+  internode_encryption: none
+
+client_encryption_options:
+  enabled: false

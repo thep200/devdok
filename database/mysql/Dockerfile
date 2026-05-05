@@ -1,4 +1,4 @@
-ARG MYSQL_VERSION
+ARG MYSQL_VERSION=8.0
 FROM mysql:${MYSQL_VERSION}
 
 #####################################
@@ -6,7 +6,8 @@ FROM mysql:${MYSQL_VERSION}
 #####################################
 
 ARG TZ=UTC
-ENV TZ ${TZ}
+ENV TZ=${TZ}
+
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && chown -R mysql:root /var/lib/mysql/
 
 # Tạo thư mục cho binlog và set quyền cho user mysql

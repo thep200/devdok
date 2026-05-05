@@ -30,6 +30,10 @@ volumes:
     driver: local
   clickhouse_data:
     driver: local
+  cassandra_data:
+    driver: local
+  scylladb_data:
+    driver: local
 
 services:
   # Redis #####################################################
@@ -140,6 +144,75 @@ services:
       nofile:
         soft: 262144
         hard: 262144
+
+  # Cassandra #################################################
+  cassandra:
+    restart: always
+    container_name: cassandra
+    build:
+      context: ./database/cassandra
+      args:
+        - CASSANDRA_VERSION=${CASSANDRA_VERSION:-4.1.3}
+    ports:
+      - "${CASSANDRA_PORT:-9042}:9042"
+      - "${CASSANDRA_INTER_NODE_PORT:-7000}:7000"
+      - "${CASSANDRA_INTER_NODE_SSL_PORT:-7001}:7001"
+      - "${CASSANDRA_JMX_PORT:-7199}:7199"
+      - "${CASSANDRA_THRIFT_PORT:-9160}:9160"
+    environment:
+      - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME:-Test Cluster}
+      - CASSANDRA_SEEDS=${CASSANDRA_SEEDS:-cassandra}
+      - CASSANDRA_DC=${CASSANDRA_DC:-datacenter1}
+      - CASSANDRA_RACK=${CASSANDRA_RACK:-rack1}
+      - CASSANDRA_ENDPOINT_SNITCH=${CASSANDRA_ENDPOINT_SNITCH:-SimpleSnitch}
+      - MAX_HEAP_SIZE=${CASSANDRA_MAX_HEAP_SIZE:-1G}
+      - HEAP_NEWSIZE=${CASSANDRA_HEAP_NEWSIZE:-256M}
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+      - ./database/cassandra/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    networks:
+      - internal
+      - shared
+    healthcheck:
+      test: ["CMD", "nodetool", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # ScyllaDB ##################################################
+  scylladb:
+    restart: always
+    container_name: scylladb
+    build:
+      context: ./database/scylladb
+      args:
+        - SCYLLADB_VERSION=${SCYLLADB_VERSION:-5.2.5}
+    ports:
+      - "${SCYLLADB_PORT:-9043}:9042"
+      - "${SCYLLADB_INTER_NODE_PORT:-7010}:7000"
+      - "${SCYLLADB_INTER_NODE_SSL_PORT:-7011}:7001"
+      - "${SCYLLADB_JMX_PORT:-7200}:7199"
+      - "${SCYLLADB_THRIFT_PORT:-9161}:9160"
+      - "${SCYLLADB_METRICS_PORT:-10000}:10000"
+    environment:
+      - SCYLLA_CLUSTER_NAME=${SCYLLA_CLUSTER_NAME:-Test Cluster}
+      - SCYLLA_SEEDS=${SCYLLA_SEEDS:-scylladb}
+      - SCYLLA_DATACENTER=${SCYLLA_DATACENTER:-datacenter1}
+      - SCYLLA_RACK=${SCYLLA_RACK:-rack1}
+      - SCYLLA_DEVELOPER_MODE=${SCYLLA_DEVELOPER_MODE:-true}
+    volumes:
+      - scylladb_data:/var/lib/scylla
+      - ./database/scylladb/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+    networks:
+      - internal
+      - shared
+    healthcheck:
+      test: ["CMD", "nodetool", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
   # Kafka ####################################################
   kafka:
@@ -298,7 +371,7 @@ services:
       - internal
       - shared
 
-### PHP-FPM-8.2 ##############################################
+  ### PHP-FPM-8.2 ##############################################
   php-fpm-82:
     restart: always
     container_name: phpfpm82
@@ -335,7 +408,7 @@ services:
       - backend
       - shared
 
-### PHP-FPM-8.3 ##############################################
+  ### PHP-FPM-8.3 ##############################################
   php-fpm-83:
     restart: always
     container_name: phpfpm83
@@ -372,7 +445,7 @@ services:
       - backend
       - shared
 
-### PHP-FPM-7.4 ##############################################
+  ### PHP-FPM-7.4 ##############################################
   php-fpm-74:
     container_name: phpfpm74
     platform: linux/amd64
@@ -409,7 +482,7 @@ services:
       - backend
       - shared
 
-### NGINX Server #########################################
+  ### NGINX Server #########################################
   nginx:
     restart: always
     container_name: nginx
