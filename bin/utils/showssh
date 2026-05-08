@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+
+function showssh() {
+    local config_file="${HOME}/.ssh/config"
+
+    # Kiểm tra xem file có tồn tại không
+    if [[ ! -f "$config_file" ]]; then
+        echo "Lỗi: Không tìm thấy file cấu hình tại $config_file"
+        return 1
+    fi
+
+    awk '
+        BEGIN {
+            # Khởi tạo độ dài tối thiểu cho các cột (bằng đúng chữ ở Header)
+            max_alias = 5
+            max_host = 8
+            max_desc = 11
+            count = 0
+        }
+
+        # 1. Bắt dòng comment bắt đầu bằng dấu #
+        /^[ \t]*#/ {
+            desc = $0
+            sub(/^[ \t]*#[ \t]*/, "", desc)
+            next
+        }
+
+        # 2. Bắt dòng Host để lấy tên Alias
+        /^[ \t]*Host[ \t]+/ {
+            alias_name = $2
+            next
+        }
+
+        # 3. Bắt dòng HostName để lấy IP/Domain
+        /^[ \t]*HostName[ \t]+/ {
+            hostname = $2
+
+            # Bỏ qua cấu hình wildcard (*)
+            if (alias_name != "*") {
+                count++
+                aliases[count] = alias_name
+                hosts[count] = hostname
+                descs[count] = desc
+
+                # Cập nhật độ dài lớn nhất của từng cột để vẽ khung
+                if (length(alias_name) > max_alias) max_alias = length(alias_name)
+                if (length(hostname) > max_host) max_host = length(hostname)
+                if (length(desc) > max_desc) max_desc = length(desc)
+            }
+
+            # Reset lại biến cho block tiếp theo
+            desc = ""
+            alias_name = ""
+        }
+
+        END {
+            if (count == 0) {
+                print "Không có cấu hình Host nào trong file."
+                exit
+            }
+
+            # Hàm tạo đường viền ngang (+---+---+---+)
+            border = "+"
+            for(i=0; i<max_alias+2; i++) border = border "-"
+            border = border "+"
+            for(i=0; i<max_host+2; i++) border = border "-"
+            border = border "+"
+            for(i=0; i<max_desc+2; i++) border = border "-"
+            border = border "+"
+
+            # In Header
+            print border
+            printf "| %-*s | %-*s | %-*s |\n", max_alias, "ALIAS", max_host, "HOSTNAME", max_desc, "DESCRIPTION"
+            print border
+
+            # In Data
+            for (i=1; i<=count; i++) {
+                printf "| %-*s | %-*s | %-*s |\n", max_alias, aliases[i], max_host, hosts[i], max_desc, descs[i]
+            }
+
+            # In viền kết thúc
+            print border
+        }
+    ' "$config_file"
+}

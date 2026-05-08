@@ -1,64 +1,80 @@
 #!/bin/bash
 
-# Listing branch name of git repository
-# Usage: gitbranch
 function gitbranch() {
-    # Color definitions
-    GREEN='\033[0;32m'
-    RESET='\033[0m'
+    # 1. Kiểm tra xem có đang ở trong thư mục Git không
+    if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        echo "Not a git repository."
+        return 1
+    fi
 
-    # Get current branch
-    current_branch=$(git rev-parse --abbrev-ref HEAD)
+    # 2. Lấy thông tin trong 1 lần duy nhất
+    local current=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    local merged_branches=$(git branch --merged "$current" 2>/dev/null | sed 's/^[ *]*//' | tr '\n' ' ')
 
-    # Get all branch data first
-    branch_data=$(git for-each-ref --sort=-committerdate refs/heads/ --format='%(refname:short)' | head -n 10)
+    # 3. Lấy top 10 mới nhất và pipe thẳng vào awk
+    git for-each-ref --sort=-committerdate refs/heads/ --format='%(refname:short)' | head -n 10 | \
+    awk -v curr="$current" -v merged_data="$merged_branches" '
+        BEGIN {
+            split(merged_data, m_arr, " ")
+            for (i in m_arr) {
+                if (m_arr[i] != "") merged_map[m_arr[i]] = 1
+            }
 
-    # Calculate max branch name length from actual data
-    max_branch_length=$(echo "$branch_data" | awk '{print length($1)}' | sort -nr | head -1)
+            count = 0
+            w_status = 6
+            w_name = 4
 
-    # Set minimum width for "Branch Name" header (4 chars) and add padding
-    header_length=4
-    max_length=$((max_branch_length > header_length ? max_branch_length : header_length))
+            GREEN = "\033[0;32m"
+            RESET = "\033[0m"
+        }
 
-    # Calculate Status column width dynamically
-    status_header_length=6
-    max_status_length=7
-    status_length=$((max_status_length > status_header_length ? max_status_length : status_header_length))
+        {
+            branch = $1
+            count++
+            names[count] = branch
 
-    # Print table header
-    printf "+%s+%s+\n" "$(printf '%*s' $((status_length + 2)) | tr ' ' '-')" "$(printf '%*s' $((max_length + 2)) | tr ' ' '-')"
-    printf "| %-${status_length}s | %-${max_length}s |\n" "Status" "Name"
-    printf "+%s+%s+\n" "$(printf '%*s' $((status_length + 2)) | tr ' ' '-')" "$(printf '%*s' $((max_length + 2)) | tr ' ' '-')"
+            # Phân loại Status
+            if (branch == curr) {
+                status[count] = "Current"
+                colors[count] = ""
+            } else if (branch in merged_map) {
+                status[count] = "Merged"
+                colors[count] = GREEN
+            } else {
+                status[count] = "Active"
+                colors[count] = ""
+            }
 
-    # Print branch data
-    echo "$branch_data" | while read -r line; do
-        branch_name="$line"
+            if (length(status[count]) > w_status) w_status = length(status[count])
+            if (length(names[count]) > w_name) w_name = length(names[count])
+        }
 
-        # Check if branch is merged
-        if [ "$branch_name" = "$current_branch" ]; then
-            branch_status="Current"
-        else
-            merge_base=$(git merge-base "$current_branch" "$branch_name" 2>/dev/null)
-            branch_commit=$(git rev-parse "$branch_name" 2>/dev/null)
-            if [ "$merge_base" = "$branch_commit" ]; then
-                branch_status="Merged"
-                colored_status="${GREEN}Merged${RESET}"
-            else
-                branch_status="Active"
-                colored_status="Active"
-            fi
-        fi
+        END {
+            if (count == 0) {
+                print "No branches found."
+                exit
+            }
 
-        # Use different formatting for colored vs non-colored status
-        if [ "$branch_status" = "Current" ]; then
-            printf "| %-${status_length}s | %-${max_length}s |\n" "$branch_status" "$branch_name"
-        else
-            printf "| "
-            echo -en "$colored_status"
-            printf "%*s | %-${max_length}s |\n" $((status_length - 6)) "" "$branch_name"
-        fi
-    done
+            # Hàm vẽ viền ngang (+---+---+)
+            border = "+"
+            for(i=0; i<w_status+2; i++) border = border "-"
+            border = border "+"
+            for(i=0; i<w_name+2; i++) border = border "-"
+            border = border "+"
 
-    # Print table footer
-    printf "+%s+%s+\n" "$(printf '%*s' $((status_length + 2)) | tr ' ' '-')" "$(printf '%*s' $((max_length + 2)) | tr ' ' '-')"
+            # In Header
+            print border
+            printf "| %-*s | %-*s |\n", w_status, "STATUS", w_name, "NAME"
+            print border
+
+            # In Dữ liệu
+            for (i=1; i<=count; i++) {
+                status_padded = sprintf("%-*s", w_status, status[i])
+                printf "| %s%s%s | %-*s |\n", colors[i], status_padded, RESET, w_name, names[i]
+            }
+
+            # In Footer
+            print border
+        }
+    '
 }

@@ -1,38 +1,72 @@
 #!/bin/bash
 
-# Show file that match the extension in the current or specified directory
-# Usage: showfile extension [path]
-# Example: showfile php
 function showfile() {
     local ext=$1
     local directory=${2:-.}
 
+    # Validate input
     if [[ -z "$ext" ]]; then
-        echo "|-----------------------------------------------------|"
-        echo "|Usage                 | showfile extension [path]    |"
-        echo "|Ex Show current path  | showfile php                 |"
-        echo "|Ex Show specific path | showfile php /path           |"
-        echo "|-----------------------------------------------------|"
+        echo "+----------------------+----------------------------+"
+        echo "| Usage                | showfile extension [path]  |"
+        echo "| Ex Show current path | showfile php               |"
+        echo "| Ex Show specific path| showfile php /path         |"
+        echo "+----------------------+----------------------------+"
         return 1
     fi
 
     if [[ ! -d "$directory" ]]; then
-        echo "Error: Directory '$directory' does not exist"
+        echo "Lỗi: Không tìm thấy thư mục '$directory'"
         return 1
     fi
 
-    local count=$(find "$directory" -name "*.$ext" -type f | wc -l | tr -d ' ')
-    if [[ $count -eq 0 ]]; then
-        echo "No *.$ext files found in $directory"
-        return 0
-    fi
+    # TỐI ƯU HIỆU NĂNG: Gộp việc tìm, đếm và tính tổng vào 1 pipeline duy nhất
+    # Dùng wc -c để lấy số bytes chính xác, an toàn với file có chứa dấu cách.
+    find "$directory" -name "*.$ext" -type f -exec wc -c {} + 2>/dev/null | awk -v ext="$ext" -v dir="$directory" '
+        BEGIN {
+            count = 0
+            sum_bytes = 0
+        }
+        
+        {
+            # wc -c sẽ in ra dòng "total" nếu số lượng file quá nhiều (bị chia chunk).
+            # Ta bỏ qua dòng này để đếm chính xác.
+            if ($NF != "total") {
+                count++
+                sum_bytes += $1
+            }
+        }
+        
+        END {
+            if (count == 0) {
+                print "Không tìm thấy file *." ext " nào trong " dir
+                exit 0
+            }
 
-    find "$directory" -name "*.$ext" -type f -exec du -k {} + | \
-    awk '{total+=$1} END{
-        printf "|---------------------\n"
-        printf "|Extension | '"$ext   \n"'"
-        printf "|Count     | '"$count \n"'"
-        printf "|Size (GB) | %.5f     \n", total/1024/1024
-        printf "|---------------------\n"
-    }'
+            # Quy đổi từ Bytes sang GB
+            size_gb = sum_bytes / 1024 / 1024 / 1024
+            size_str = sprintf("%.5f", size_gb)
+
+            # Tính toán độ rộng của từng cột để vẽ khung vừa vặn
+            # So sánh độ dài của Text Header và Data thực tế, lấy cái lớn hơn
+            w_ext = (length(ext) > 9) ? length(ext) : 9
+            w_count = (length(count "") > 5) ? length(count "") : 5
+            w_size = (length(size_str) > 9) ? length(size_str) : 9
+
+            # Hàm tạo đường viền (+---+---+---+)
+            border = "+"
+            for(i=0; i<w_ext+2; i++) border = border "-"
+            border = border "+"
+            for(i=0; i<w_count+2; i++) border = border "-"
+            border = border "+"
+            for(i=0; i<w_size+2; i++) border = border "-"
+            border = border "+"
+
+            # Vẽ bảng
+            print border
+            printf "| %-*s | %-*s | %-*s |\n", w_ext, "EXTENSION", w_count, "COUNT", w_size, "SIZE (GB)"
+            print border
+            printf "| %-*s | %-*s | %-*s |\n", w_ext, ext, w_count, count, w_size, size_str
+            print border
+        }
+    '
 }
