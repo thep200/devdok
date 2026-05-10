@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 function showssh() {
     local config_file="${HOME}/.ssh/config"
