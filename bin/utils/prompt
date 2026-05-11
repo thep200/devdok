@@ -6,8 +6,7 @@ autoload -Uz add-zsh-hook
 zstyle ':vcs_info:*' enable git
 zstyle ':vcs_info:git:*' formats '%b'
 
-COLOR_WHITE='%F{#ffffff}'
-COLOR_SMOCK='%B%F{#d1d5db}'
+COLOR_PURPLE='%B%F{#a5b4fc}'
 COLOR_GREEN='%F{#008700}'
 COLOR_GREEN_LIGHT='%F{#00d700}'
 COLOR_RED='%F{#ff5f5f}'
@@ -16,13 +15,12 @@ COLOR_GRAY='%F{#52525b}'
 
 update_git_prompt_info() {
     vcs_info
-    local branch_color="$COLOR_GREEN"
-
     if [[ -n "$vcs_info_msg_0_" ]]; then
-        if [[ -n $(command git status --porcelain 2>/dev/null | head -n 1) ]]; then
-            branch_color="$COLOR_RED"
+        ETX_GIT_PROMPT="${COLOR_RESET}"
+         if [[ -n $(command git status --porcelain 2>/dev/null | head -n 1) ]]; then
+            ETX_GIT_PROMPT=" ${COLOR_RED}✘${COLOR_RESET}"
         fi
-        GIT_PROMPT=" ${COLOR_WHITE}(${branch_color}${vcs_info_msg_0_}${COLOR_WHITE})${COLOR_RESET}"
+        GIT_PROMPT=" ${COLOR_PURPLE}git(${COLOR_GREEN}${vcs_info_msg_0_}${COLOR_PURPLE})${ETX_GIT_PROMPT}"
     else
         GIT_PROMPT=""
     fi
@@ -31,6 +29,6 @@ update_git_prompt_info() {
 add-zsh-hook precmd update_git_prompt_info
 setopt prompt_subst
 
-PROMPT_SYMBOL="%(?.${COLOR_GREEN_LIGHT}.${COLOR_RED})%B>%b${COLOR_RESET}"
-PROMPT='${COLOR_SMOCK}%~${COLOR_RESET}${GIT_PROMPT} ${PROMPT_SYMBOL} '
-RPROMPT='${COLOR_GRAY}🐾 %* %f'
+# Prompt
+PROMPT='${GIT_PROMPT} ${COLOR_GREEN_LIGHT}%B>%b${COLOR_RESET} '
+RPROMPT='🐾 ${COLOR_GRAY}%*'
