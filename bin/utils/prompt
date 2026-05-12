@@ -13,22 +13,29 @@ COLOR_RED='%F{#ff5f5f}'
 COLOR_RESET='%f%b'
 COLOR_GRAY='%F{#52525b}'
 
-update_git_prompt_info() {
+update_prompt_info() {
+    # if [[ -n "$CONDA_DEFAULT_ENV" ]]; then
+    #     ENV_PROMPT="${COLOR_PURPLE}env(${COLOR_GREEN}${CONDA_DEFAULT_ENV}${COLOR_PURPLE})${COLOR_RESET} "
+    # else
+    #     ENV_PROMPT=""
+    # fi
+
     vcs_info
     if [[ -n "$vcs_info_msg_0_" ]]; then
-        ETX_GIT_PROMPT="${COLOR_RESET}"
-         if [[ -n $(command git status --porcelain 2>/dev/null | head -n 1) ]]; then
-            ETX_GIT_PROMPT=" ${COLOR_RED}✘${COLOR_RESET}"
+        local etx_git=""
+        if [[ -n $(command git status --porcelain 2>/dev/null | head -n 1) ]]; then
+            etx_git=" ${COLOR_RED}✘${COLOR_RESET}"
         fi
-        GIT_PROMPT=" ${COLOR_PURPLE}git(${COLOR_GREEN}${vcs_info_msg_0_}${COLOR_PURPLE})${ETX_GIT_PROMPT}"
+        GIT_PROMPT="${COLOR_PURPLE}git(${COLOR_GREEN}${vcs_info_msg_0_}${COLOR_PURPLE})${etx_git} "
     else
         GIT_PROMPT=""
     fi
+
+    RPROMPT='🐾 ${COLOR_GRAY}%*'
+    # PROMPT="${ENV_PROMPT}${GIT_PROMPT}${COLOR_GREEN_LIGHT}%B>%b${COLOR_RESET} "
+    PROMPT="${GIT_PROMPT}${COLOR_GREEN_LIGHT}%B>%b${COLOR_RESET} "
 }
 
-add-zsh-hook precmd update_git_prompt_info
+add-zsh-hook precmd update_prompt_info
 setopt prompt_subst
 
-# Prompt
-PROMPT='${GIT_PROMPT} ${COLOR_GREEN_LIGHT}%B>%b${COLOR_RESET} '
-RPROMPT='🐾 ${COLOR_GRAY}%*'
