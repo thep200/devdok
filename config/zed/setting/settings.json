@@ -1,0 +1,196 @@
+// Zed settings
+// For information on how to configure Zed, see the Zed
+//
+// documentation: https://zed.dev/docs/configuring-zed
+//
+// To see all of Zed's default settings without changing your
+// custom settings, run the `open default settings` command
+// from the command palette or from `Zed` application menu.
+{
+  // UI
+  "tab_bar": { "show": false },
+  "scrollbar": { "show": "never" },
+  "gutter": { "line_numbers": false },
+  "sticky_scroll": { "enabled": true },
+  "collaboration_panel": { "dock": "right" },
+  "status_bar": { "experimental.show": false },
+  "active_pane_modifiers": { "inactive_opacity": 0.95 },
+  "debugger": {
+    "dock": "right",
+    "save_breakpoints": true,
+    "stepping_granularity": "line",
+  },
+  "project_panel": {
+    "dock": "right",
+    "hide_root": true,
+    "starts_open": false,
+    "auto_fold_dirs": false,
+    "indent_guides": { "show": "always" },
+  },
+  "toolbar": {
+    "code_actions": true,
+    "breadcrumbs": false,
+    "quick_actions": false,
+  },
+  "title_bar": {
+    "show_sign_in": false,
+    "show_user_menu": false,
+    "show_user_picture": false,
+    "show_branch_status_icon": true,
+    "show_onboarding_banner": false,
+  },
+  "cursor_shape": "bar",
+  "line_indicator_format": "long",
+  "extend_comment_on_newline": false,
+
+  // Fonts & Themes
+  "ui_font_size": 15.5,
+  "buffer_font_size": 14.5,
+  "buffer_font_weight": 450,
+  "agent_buffer_font_size": 13.5,
+  "ui_font_family": "Monaspace Argon",
+  "buffer_font_family": "Monaspace Argon",
+  "buffer_line_height": { "custom": 2.25 },
+  "buffer_font_features": { "calt": false },
+  "theme": {
+    "mode": "dark",
+    "light": "Ayu Light",
+    "dark": "Thep200 Dark Clean",
+  },
+  "icon_theme": {
+    "mode": "light",
+    "dark": "Catppuccin Latte",
+    "light": "Catppuccin Latte",
+  },
+
+  // Editor
+  "outline_panel": { "dock": "right" },
+  "autosave": {
+    "after_delay": {
+      "milliseconds": 500,
+    },
+  },
+  "file_finder": {
+    "include_channels": true,
+    "include_ignored": "all",
+    "modal_max_width": "large",
+  },
+  "file_scan_exclusions": [
+    "**/.hg",
+    "**/.jj",
+    "**/CVS",
+    "**/.git",
+    "**/.svn",
+    "**/.DS_Store",
+    "**/Thumbs.db",
+    "**/.settings",
+    "**/__debug_*",
+    "**/.classpath",
+    "**/debug.test*",
+    "**/coverage.out",
+  ],
+  "private_files": [
+    "**/.env*",
+    "**/*.pem",
+    "**/*.key",
+    "**/*.crt",
+    "**/*.cert",
+    "**/secrets.yml",
+  ],
+  "format_on_save": "on",
+  "excerpt_context_lines": 0,
+  "autoscroll_on_clicks": true,
+  "restore_on_startup": "last_session",
+  "double_click_in_multibuffer": "open",
+
+  // Languages
+  "inlay_hints": {
+    "enabled": true,
+    "show_type_hints": false,
+    "show_other_hints": false,
+    "show_value_hints": false,
+    "toggle_on_modifiers_press": { "function": true },
+  },
+  "languages": {
+    "YAML": { "tab_size": 2 },
+    "Dockerfile": { "tab_size": 2 },
+    "PHP": {
+      "formatter": "none",
+      "format_on_save": "off",
+      "language_servers": ["phpactor"],
+    },
+    "Go": {
+      "hard_tabs": true,
+      "format_on_save": "on",
+      "language_servers": ["gopls"],
+    },
+  },
+
+  // LSP
+  "code_lens": "on",
+  "lsp": {
+    "gopls": {
+      "initialization_options": {
+        "gofumpt": true,
+        "staticcheck": true,
+        "usePlaceholders": true,
+        "directoryFilters": ["-**/node_modules", "-**/.git"],
+        "codelenses": {
+          "test": true,
+        },
+        "analyses": {
+          "nilness": true,
+          "unusedparams": true,
+          "unusedwrite": true,
+          "shadow": true,
+        },
+      },
+    },
+  },
+
+  // Extensions
+  "auto_install_extensions": {
+    "php": true,
+    "sql": true,
+    "make": true,
+    "toml": true,
+    "html": true,
+    "proto": true,
+    "dockerfile": true,
+    "catppuccin icons": true,
+  },
+
+  // Git
+  "git_panel": {
+    "dock": "right",
+    "file_icons": true,
+    "show_count_badge": true,
+  },
+  "git": {
+    "git_gutter": "tracked_files",
+    "hunk_style": "staged_hollow",
+  },
+
+  // AI & Predictions
+  "snippet_sort_order": "inline",
+  "edit_predictions": {
+    "mode": "eager",
+    "provider": "copilot",
+  },
+  "agent": {
+    "dock": "left",
+    "default_profile": "write",
+    "tool_permissions": { "default": "allow" },
+    "default_model": {
+      "enable_thinking": true,
+      "provider": "copilot_chat",
+      "model": "claude-haiku-4.5",
+    },
+  },
+
+  // Telemetry
+  "telemetry": {
+    "metrics": false,
+    "diagnostics": false,
+  },
+}

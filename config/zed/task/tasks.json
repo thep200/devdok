@@ -1,0 +1,57 @@
+[
+    {
+        "label": "Go: Test current package 📦",
+        "command": "sh",
+        "args": [
+            "-c",
+            "go test -v -coverprofile=coverage.out . && go tool cover -html=coverage.out"
+        ],
+        "tags": ["golang"]
+    },
+    {
+        "label": "Go: Test specific function 🎯",
+        "command": "go",
+        "args": [
+            "test",
+            "-v",
+            "-run",
+            "$ZED_SELECTED_TEXT",
+            "-coverprofile=coverage.out",
+            "."
+        ],
+        "tags": ["golang"]
+    },
+    {
+        "label": "Go: Test specific function with -race 🏁",
+        "command": "go",
+        "args": [
+            "test",
+            "-v",
+            "-run",
+            "$ZED_SELECTED_TEXT",
+            "-race",
+            "-coverprofile=coverage.out",
+            "."
+        ],
+        "tags": ["golang"]
+    },
+    {
+        "label": "Go: Test View coverage report 📊",
+        "command": "go",
+        "args": [
+            "tool",
+            "cover",
+            "-html=coverage.out"
+        ],
+        "tags": ["golang"]
+    },
+    {
+        "label": "Go: Test all with coverage 🧪",
+        "command": "sh",
+        "args": [
+            "-c",
+            "go test -v -coverprofile=coverage.out ./... && echo '\nCoverage report generated. Run \"Go: Test View coverage report\" to view.'"
+        ],
+        "tags": ["golang"]
+    }
+]

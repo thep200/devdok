@@ -1,0 +1,297 @@
+
+/* ========================================
+ * Find Widget Popup Customization
+ * ======================================== */
+
+/* Main Find Widget Container */
+.editor-widget.find-widget {
+    top: 5px !important;
+    right: 28px !important;
+    border-radius: 10px !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    background-color: #1b1b1b !important;
+    box-shadow:
+        0 4px 16px rgba(0, 0, 0, 0.5),
+        0 0 1px 0 rgba(255, 255, 255, 0.4),
+        0 0 4px 1px rgba(255, 255, 255, 0.1) !important;
+    padding: 10px 14px !important;
+    height: auto !important;
+    min-height: unset !important;
+    max-height: unset !important;
+    min-width: unset !important;
+    width: auto !important;
+    overflow: visible !important;
+    transition: top 0.3s ease-out, opacity 0.3s ease-out !important;
+}
+
+/* Widget visible state */
+.editor-widget.find-widget.visible {
+    animation: findWidgetSlideIn 0.25s ease-out !important;
+}
+
+/* Hide widget completely when closed - slide up animation */
+.editor-widget.find-widget:not(.visible) {
+    top: -80px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* Input width auto-scale */
+.editor-widget.find-widget .monaco-inputbox {
+    min-width: 250px !important;
+}
+
+/* Fix sash/resize handle that may cause layout issues */
+.editor-widget.find-widget .monaco-sash {
+    display: none !important;
+}
+
+/* Find Widget Animation */
+@keyframes findWidgetSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Find Widget Input Fields */
+.editor-widget.find-widget .monaco-inputbox {
+    padding: 4px 8px !important;
+    border-radius: 5px !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    background-color: transparent !important;
+    box-shadow:
+        0 0 6px 1px rgba(255, 255, 255, 0.04),
+        0 0 12px 2px rgba(255, 255, 255, 0.02),
+        inset 0 0 6px rgba(255, 255, 255, 0.01);
+    transition: box-shadow 0.15s ease, border-color 0.15s ease !important;
+}
+
+.editor-widget.find-widget .monaco-inputbox:focus-within {
+    border-color: rgba(255, 255, 255, 0.18) !important;
+    box-shadow:
+        0 0 8px 2px rgba(255, 255, 255, 0.08),
+        0 0 16px 3px rgba(255, 255, 255, 0.04),
+        inset 0 0 8px rgba(255, 255, 255, 0.02) !important;
+}
+
+/* Input text styling */
+.editor-widget.find-widget .monaco-inputbox input {
+    padding: 2px 4px !important;
+    background-color: transparent !important;
+}
+
+/* Find Widget Buttons - align vertically center */
+.editor-widget.find-widget .button {
+    border-radius: 4px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Remove hover effect on toggle arrow button */
+.editor-widget.find-widget .codicon-find-replace,
+.editor-widget.find-widget .codicon-find-replace-all,
+.editor-widget.find-widget .button.toggle {
+    background-color: transparent !important;
+    transform: none !important;
+}
+
+.editor-widget.find-widget .codicon-find-replace:hover,
+.editor-widget.find-widget .codicon-find-replace-all:hover,
+.editor-widget.find-widget .button.toggle:hover {
+    background-color: transparent !important;
+    transform: none !important;
+}
+
+/* Hide Close Button - use Esc instead */
+.editor-widget.find-widget .codicon-widget-close {
+    display: none !important;
+}
+
+/* Find part layout - align all items vertically center */
+.editor-widget.find-widget .find-part {
+    display: flex !important;
+    align-items: center !important;
+    margin: 0 0 0 10px !important;
+}
+
+/* Replace part layout - only show when toggled, align center */
+.editor-widget.find-widget .replace-part {
+    align-items: center !important;
+    margin: 6px 0 0 10px !important;
+}
+
+/* When replace is toggled, use flex */
+.editor-widget.find-widget.replaceToggled .replace-part {
+    display: flex !important;
+}
+
+/* Monaco find input container - align controls */
+.editor-widget.find-widget .monaco-findInput {
+    display: flex !important;
+    align-items: center !important;
+}
+
+/* Controls (Aa, ab, .*) - align center */
+.editor-widget.find-widget .monaco-findInput .controls {
+    display: flex !important;
+    align-items: center !important;
+    height: 100% !important;
+}
+
+/* Find actions (No results, arrows) - align center with input */
+.editor-widget.find-widget .find-actions {
+    display: inline-flex !important;
+    align-items: center !important;
+    height: 100% !important;
+    padding-right: 0 !important;
+    margin-right: 0 !important;
+    vertical-align: middle !important;
+}
+
+/* Replace actions - align center */
+.editor-widget.find-widget .replace-actions {
+    display: inline-flex !important;
+    align-items: center !important;
+    height: 100% !important;
+    vertical-align: middle !important;
+}
+
+/* Matches count text - align center */
+.editor-widget.find-widget .matchesCount {
+    display: inline-flex !important;
+    align-items: center !important;
+    height: 100% !important;
+    font-weight: 500 !important;
+    opacity: 0.9 !important;
+}
+
+/* All toggle icons - align center */
+.editor-widget.find-widget .monaco-custom-toggle {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Buttons in actions - align center */
+.editor-widget.find-widget .find-actions .button,
+.editor-widget.find-widget .replace-actions .button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 100% !important;
+}
+
+/* Replace Input Section */
+.editor-widget.find-widget.replaceToggled {
+    min-height: auto !important;
+}
+
+/* Smooth transition when toggling replace */
+.editor-widget.find-widget .replace-part {
+    animation: fadeInReplace 0.1s ease-out !important;
+}
+
+@keyframes fadeInReplace {
+    from {
+        opacity: 0;
+        height: 0;
+    }
+
+    to {
+        opacity: 1;
+        height: auto;
+    }
+}
+
+/* ========================================
+ * Search Panel (Ctrl+Shift+F) Customization
+ * ======================================== */
+
+/* Search Input Fields - Remove background, add soft glow */
+.search-view .monaco-inputbox,
+.search-widget .monaco-inputbox,
+.search-view .search-container .monaco-inputbox {
+    background-color: transparent !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 5px !important;
+    padding: 4px 8px !important;
+}
+
+/* Search Input Focus State - Enhanced glow */
+.search-view .monaco-inputbox:focus-within,
+.search-widget .monaco-inputbox:focus-within,
+.search-view .search-container .monaco-inputbox:focus-within {
+    border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+/* Search Input Text - Transparent background */
+.search-view .monaco-inputbox input,
+.search-widget .monaco-inputbox input,
+.search-view .search-container .monaco-inputbox input {
+    background-color: transparent !important;
+    padding: 4px 6px !important;
+}
+
+/* Replace Input in Search Panel */
+.search-view .replace-container .monaco-inputbox,
+.search-widget .replace-container .monaco-inputbox {
+    background-color: transparent !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 5px !important;
+    padding: 4px 8px !important;
+}
+
+.search-view .replace-container .monaco-inputbox:focus-within,
+.search-widget .replace-container .monaco-inputbox:focus-within {
+    border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+.search-view .replace-container .monaco-inputbox input,
+.search-widget .replace-container .monaco-inputbox input {
+    background-color: transparent !important;
+    padding: 4px 6px !important;
+}
+
+/* Files to Include/Exclude Input Fields */
+.search-view .file-types .monaco-inputbox,
+.search-view .query-details .monaco-inputbox {
+    background-color: transparent !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 5px !important;
+    padding: 4px 8px !important;
+}
+
+.search-view .file-types .monaco-inputbox:focus-within,
+.search-view .query-details .monaco-inputbox:focus-within {
+    border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+.search-view .file-types .monaco-inputbox input,
+.search-view .query-details .monaco-inputbox input {
+    background-color: transparent !important;
+    padding: 4px 6px !important;
+}
+
+/* Query Details Toggle (files to include/exclude section) */
+.search-view .query-details .more,
+.search-view .query-details .more:hover {
+    background-color: transparent !important;
+}
+
+/* Remove hover effect on arrows in search pane */
+.search-view .monaco-action-bar .action-item .action-label:hover,
+.search-view .codicon-chevron-down:hover,
+.search-view .codicon-chevron-right:hover,
+.search-view .codicon-search-show-context:hover,
+.search-view .codicon-search-hide-replace:hover,
+.search-view .codicon-search-show-replace:hover {
+    background-color: transparent !important;
+    transform: none !important;
+}

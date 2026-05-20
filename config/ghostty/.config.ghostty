@@ -1,0 +1,20 @@
+window-width = 115
+window-height = 30
+window-padding-x = 10
+window-padding-y = 10
+# window-padding-color = background
+
+font-size = 15
+font-family = Monaspace Argon
+theme = Github Dark Default
+background = #1d1d1d
+# custom-shader = ~/.config/ghostty/crt.glsl
+
+cursor-color = #22c55e
+cursor-style = block
+cursor-style-blink = false
+shell-integration-features = no-cursor
+
+# title = " "
+macos-window-buttons = hidden
+macos-titlebar-proxy-icon = hidden
