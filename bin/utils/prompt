@@ -12,14 +12,9 @@ COLOR_GREEN_LIGHT='%F{#00d700}'
 COLOR_RED='%F{#ff5f5f}'
 COLOR_RESET='%f%b'
 COLOR_GRAY='%F{#52525b}'
+COLOR_BLUE='%F{#00afff}'
 
 update_prompt_info() {
-    # if [[ -n "$CONDA_DEFAULT_ENV" ]]; then
-    #     ENV_PROMPT="${COLOR_PURPLE}env(${COLOR_GREEN}${CONDA_DEFAULT_ENV}${COLOR_PURPLE})${COLOR_RESET} "
-    # else
-    #     ENV_PROMPT=""
-    # fi
-
     vcs_info
     if [[ -n "$vcs_info_msg_0_" ]]; then
         local etx_git=""
@@ -31,11 +26,25 @@ update_prompt_info() {
         GIT_PROMPT=""
     fi
 
+    # Shorten the current path
+    local my_path="${PWD/#$HOME/~}"
+    local -a dirs
+    dirs=(${(s:/:)my_path})
+    if (( ${#dirs} > 2 )); then
+        for i in {2..$(( ${#dirs} - 1 ))}; do
+            dirs[i]=${dirs[i][1,1]}
+        done
+    fi
+    local short_path="${(j:/:)dirs}"
+
+    # Prompt
     RPROMPT='🐾 ${COLOR_GRAY}%*'
-    # PROMPT="${ENV_PROMPT}${GIT_PROMPT}${COLOR_GREEN_LIGHT}%B>%b${COLOR_RESET} "
-    PROMPT="${GIT_PROMPT}${COLOR_GREEN_LIGHT}%B>%b${COLOR_RESET} "
+    PROMPT="${COLOR_BLUE}${short_path} "
+    if [[ -n "$GIT_PROMPT" ]]; then
+        PROMPT+="${GIT_PROMPT}"
+    fi
+    PROMPT+="${COLOR_GREEN_LIGHT}%B>%b${COLOR_RESET} "
 }
 
 add-zsh-hook precmd update_prompt_info
 setopt prompt_subst
-
