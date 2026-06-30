@@ -1,0 +1,170 @@
+# SigNoz - Observability stack (APM, logs, metrics, traces) for local dev.
+#
+# Self-contained stack (own ClickHouse + Zookeeper) so it does NOT touch the
+# project's general-purpose `clickhouse` service. Inter-service traffic stays
+# on the private `signoz-net`; the otel-collector is also attached to the
+# project's external `shared` network so other containers (php-fpm, apps, ...)
+# can push telemetry to `signoz-otel-collector:4317` / `:4318`.
+#
+#   Run `make net-shared` in the project root first to create `shared`.
+#   Start:  docker compose -f signoz/docker-compose.yml up -d
+#   UI:     http://localhost:${SIGNOZ_PORT:-3301}
+
+x-common: &common
+  networks:
+    - signoz-net
+  restart: unless-stopped
+  logging:
+    options:
+      max-size: 50m
+      max-file: "3"
+
+x-clickhouse-defaults: &clickhouse-defaults
+  <<: *common
+  image: clickhouse/clickhouse-server:${SIGNOZ_CLICKHOUSE_VERSION:-25.5.6}
+  tty: true
+  depends_on:
+    init-clickhouse:
+      condition: service_completed_successfully
+  healthcheck:
+    test: ["CMD", "wget", "--spider", "-q", "0.0.0.0:8123/ping"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+  ulimits:
+    nproc: 65535
+    nofile:
+      soft: 262144
+      hard: 262144
+  environment:
+    - CLICKHOUSE_SKIP_USER_SETUP=1
+
+x-db-depend: &db-depend
+  <<: *common
+  depends_on:
+    clickhouse:
+      condition: service_healthy
+
+services:
+  # Downloads the histogramQuantile UDF binary into the ClickHouse user_scripts dir.
+  init-clickhouse:
+    <<: *common
+    image: clickhouse/clickhouse-server:${SIGNOZ_CLICKHOUSE_VERSION:-25.5.6}
+    container_name: signoz-init-clickhouse
+    command:
+      - bash
+      - -c
+      - |
+        version="v0.0.1"
+        node_os=$$(uname -s | tr '[:upper:]' '[:lower:]')
+        node_arch=$$(uname -m | sed s/aarch64/arm64/ | sed s/x86_64/amd64/)
+        echo "Fetching histogram-binary for $${node_os}/$${node_arch}"
+        cd /tmp
+        wget -O histogram-quantile.tar.gz "https://github.com/SigNoz/signoz/releases/download/histogram-quantile%2F$${version}/histogram-quantile_$${node_os}_$${node_arch}.tar.gz"
+        tar -xvzf histogram-quantile.tar.gz
+        mv histogram-quantile /var/lib/clickhouse/user_scripts/histogramQuantile
+    restart: on-failure
+    volumes:
+      - ./common/clickhouse/user_scripts:/var/lib/clickhouse/user_scripts/
+
+  clickhouse:
+    <<: *clickhouse-defaults
+    container_name: signoz-clickhouse
+    # Intentionally NOT publishing 8123/9000 to host to avoid clashing with the
+    # project's `clickhouse` service. Uncomment to expose on alternate host ports.
+    # ports:
+    #   - "8124:8123"
+    #   - "9001:9000"
+    volumes:
+      - ./common/clickhouse/config.xml:/etc/clickhouse-server/config.xml
+      - ./common/clickhouse/users.xml:/etc/clickhouse-server/users.xml
+      - ./common/clickhouse/custom-function.xml:/etc/clickhouse-server/custom-function.xml
+      - ./common/clickhouse/user_scripts:/var/lib/clickhouse/user_scripts/
+      - ./common/clickhouse/cluster.xml:/etc/clickhouse-server/config.d/cluster.xml
+      # Embedded ClickHouse Keeper (replaces the standalone zookeeper container).
+      - ./common/clickhouse/keeper.xml:/etc/clickhouse-server/config.d/keeper.xml
+      - clickhouse:/var/lib/clickhouse/
+
+  # SigNoz UI + query service (consolidated single binary).
+  signoz:
+    <<: *db-depend
+    image: signoz/signoz:${SIGNOZ_VERSION:-v0.129.0}
+    container_name: signoz
+    ports:
+      - "${SIGNOZ_PORT:-3301}:8080"
+    volumes:
+      - sqlite:/var/lib/signoz/
+    environment:
+      - SIGNOZ_ALERTMANAGER_PROVIDER=signoz
+      - SIGNOZ_TELEMETRYSTORE_CLICKHOUSE_DSN=tcp://clickhouse:9000
+      - SIGNOZ_SQLSTORE_SQLITE_PATH=/var/lib/signoz/signoz.db
+      - SIGNOZ_TOKENIZER_JWT_SECRET=secret
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # OTLP collector — telemetry ingestion endpoint (gRPC 4317 / HTTP 4318).
+  # Attached to `shared` so other project containers can send data here.
+  otel-collector:
+    <<: *db-depend
+    image: signoz/signoz-otel-collector:${SIGNOZ_OTELCOL_VERSION:-v0.144.5}
+    container_name: signoz-otel-collector
+    networks:
+      - signoz-net
+      - shared
+    entrypoint:
+      - /bin/sh
+    command:
+      - -c
+      - |
+        /signoz-otel-collector migrate sync check &&
+        /signoz-otel-collector --config=/etc/otel-collector-config.yaml --manager-config=/etc/manager-config.yaml --copy-path=/var/tmp/collector-config.yaml
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+      - ./common/signoz/otel-collector-opamp-config.yaml:/etc/manager-config.yaml
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=host.name=signoz-host,os.type=linux
+      - LOW_CARDINAL_EXCEPTION_GROUPING=false
+      - SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN=tcp://clickhouse:9000
+      - SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_CLUSTER=cluster
+      - SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_REPLICATION=true
+      - SIGNOZ_OTEL_COLLECTOR_TIMEOUT=10m
+    ports:
+      - "${SIGNOZ_OTLP_GRPC_PORT:-4317}:4317"
+      - "${SIGNOZ_OTLP_HTTP_PORT:-4318}:4318"
+
+  # One-shot schema migrator (bootstrap + sync + async). Exits when done.
+  signoz-telemetrystore-migrator:
+    <<: *db-depend
+    image: signoz/signoz-otel-collector:${SIGNOZ_OTELCOL_VERSION:-v0.144.5}
+    container_name: signoz-telemetrystore-migrator
+    environment:
+      - SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN=tcp://clickhouse:9000
+      - SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_CLUSTER=cluster
+      - SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_REPLICATION=true
+      - SIGNOZ_OTEL_COLLECTOR_TIMEOUT=10m
+    entrypoint:
+      - /bin/sh
+    command:
+      - -c
+      - |
+        /signoz-otel-collector migrate bootstrap &&
+        /signoz-otel-collector migrate sync up &&
+        /signoz-otel-collector migrate async up
+    restart: on-failure
+
+networks:
+  signoz-net:
+    name: signoz-net
+    driver: bridge
+  # Project-wide network created by `make net-shared` in the repo root.
+  shared:
+    external: true
+
+volumes:
+  clickhouse:
+    name: signoz-clickhouse
+  sqlite:
+    name: signoz-sqlite
