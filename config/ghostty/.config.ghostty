@@ -1,20 +1,32 @@
-window-width = 115
+window-width = 120
 window-height = 30
-window-padding-x = 10
-window-padding-y = 10
-# window-padding-color = background
 
 font-size = 15
 font-family = Monaspace Argon
+# font-family = 0xProto Nerd Font
+# font-family = MonaspiceNe Nerd Font Mono
 theme = Github Dark Default
 background = #1d1d1d
-# custom-shader = ~/.config/ghostty/crt.glsl
+
+# custom-shader = ~/.config/ghostty/shaders/cursor_sweep.glsl
+custom-shader = ~/.config/ghostty/shaders/cursor_tail.glsl
+# custom-shader = ~/.config/ghostty/shaders/cursor_warp.glsl
+# custom-shader = ~/.config/ghostty/shaders/rectangle_boom_cursor.glsl
+# custom-shader = ~/.config/ghostty/shaders/ripple_cursor.glsl
+# custom-shader = ~/.config/ghostty/shaders/ripple_rectangle_cursor.glsl
+# custom-shader = ~/.config/ghostty/shaders/sonic_boom_cursor.glsl
 
 cursor-color = #22c55e
-cursor-style = block
+# cursor-color = #00d700
+# cursor-color = #6b7280
+cursor-style = bar
 cursor-style-blink = false
 shell-integration-features = no-cursor
 
-# title = " "
+title = " "
+# macos-titlebar-style=tabs
 macos-window-buttons = hidden
 macos-titlebar-proxy-icon = hidden
+adjust-cell-height = 10%
+
+# keybind = global:ctrl+grave_accent=toggle_quick_terminal
