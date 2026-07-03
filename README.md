@@ -12,10 +12,10 @@ Repository này để cấu hình docker làm môi trường cài đặt những
 Stack observability (APM, logs, metrics, traces) chạy riêng, không bật cùng `docker-compose up` ở trên:
 
 ```bash
-docker compose -f signoz/docker-compose.yml --env-file .env up -d
+docker compose -f services/signoz/docker-compose.yml --env-file .env up -d
 ```
 
-UI ở http://localhost:3301. Chi tiết xem [`signoz/README.md`](./signoz/README.md).
+UI ở http://localhost:3301. Chi tiết xem [`services/signoz/README.md`](./services/signoz/README.md).
 
 ## Note
 

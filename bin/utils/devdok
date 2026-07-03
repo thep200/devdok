@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Wrapper for docker compose of the devdok repo.
+# Call this script from anywhere to run docker compose commands in the devdok repo.
+function devdok() {
+    # Find the root directory of the devdok repo from the location of the `util` command (same bin/ tree).
+    # which util -> .../devdok/bin/util ; go up 2 levels -> .../devdok
+    local util_path
+    util_path="$(command -v util)"
+    if [ -z "$util_path" ]; then
+        printf "\e[31mERROR: could not find 'util' in PATH to determine devdok directory\e[0m\n"
+        return 1
+    fi
+
+    local devdok_dir
+    devdok_dir="$(cd "$(dirname "$util_path")/.." && pwd)"
+    local compose_file="$devdok_dir/docker-compose.yml"
+
+    if [ ! -f "$compose_file" ]; then
+        printf "\e[31mERROR: could not find docker-compose.yml at %s\e[0m\n" "$devdok_dir"
+        return 1
+    fi
+
+    # Choose the compose binary (v2 'docker compose' preferred, fallback 'docker-compose').
+    local compose_cmd
+    if docker compose version >/dev/null 2>&1; then
+        compose_cmd=(docker compose)
+    elif command -v docker-compose >/dev/null 2>&1; then
+        compose_cmd=(docker-compose)
+    else
+        printf "\e[31mERROR: could not find docker compose / docker-compose\e[0m\n"
+        return 1
+    fi
+
+    # --project-directory is used to ensure that relative paths in the compose file (./services/...) and 
+    # The .env file are resolved correctly regardless of the current working directory.
+    "${compose_cmd[@]}" \
+        --project-directory "$devdok_dir" \
+        -f "$compose_file" \
+        "$@"
+}

@@ -41,11 +41,11 @@ services:
     restart: always
     container_name: redis
     build:
-      context: ./redis
+      context: ./services/redis
     volumes:
       - redis_data:/data
-      - ./redis/redis.conf:/etc/redis/redis.conf
-      - ./redis/users.acl:/etc/redis/users.acl
+      - ./services/redis/redis.conf:/etc/redis/redis.conf
+      - ./services/redis/users.acl:/etc/redis/users.acl
     environment:
       - REDIS_USERNAME=${REDIS_USERNAME}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -61,7 +61,7 @@ services:
     restart: always
     container_name: mysql
     build:
-      context: ./database/mysql
+      context: ./services/database/mysql
       args:
         - MYSQL_VERSION=${MYSQL_VERSION}
     environment:
@@ -84,7 +84,7 @@ services:
     restart: always
     container_name: postgres
     build:
-      context: ./database/postgres
+      context: ./services/database/postgres
       args:
         - POSTGRES_VERSION=${POSTGRES_VERSION}
     volumes:
@@ -105,7 +105,7 @@ services:
     container_name: mongo
     restart: always
     build:
-      context: ./database/mongo
+      context: ./services/database/mongo
     ports:
       - "${MONGODB_PORT}:27017"
     environment:
@@ -122,7 +122,7 @@ services:
     container_name: clickhouse
     restart: always
     build:
-      context: ./database/clickhouse
+      context: ./services/database/clickhouse
       args:
         - CLICKHOUSE_VERSION=${CLICKHOUSE_VERSION:-latest}
     ports:
@@ -150,7 +150,7 @@ services:
     restart: always
     container_name: cassandra
     build:
-      context: ./database/cassandra
+      context: ./services/database/cassandra
       args:
         - CASSANDRA_VERSION=${CASSANDRA_VERSION:-4.1.3}
     ports:
@@ -169,7 +169,7 @@ services:
       - HEAP_NEWSIZE=${CASSANDRA_HEAP_NEWSIZE:-256M}
     volumes:
       - cassandra_data:/var/lib/cassandra
-      - ./database/cassandra/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - ./services/database/cassandra/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
     networks:
       - internal
       - shared
@@ -185,7 +185,7 @@ services:
     restart: always
     container_name: scylladb
     build:
-      context: ./database/scylladb
+      context: ./services/database/scylladb
       args:
         - SCYLLADB_VERSION=${SCYLLADB_VERSION:-5.2.5}
     ports:
@@ -203,7 +203,7 @@ services:
       - SCYLLA_DEVELOPER_MODE=${SCYLLA_DEVELOPER_MODE:-true}
     volumes:
       - scylladb_data:/var/lib/scylla
-      - ./database/scylladb/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - ./services/database/scylladb/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
     networks:
       - internal
       - shared
@@ -322,7 +322,7 @@ services:
   # NATS ####################################################
   nats:
     build:
-      context: ./nats
+      context: ./services/nats
     container_name: nats
     ports:
       - "4222:4222" # Client connections
@@ -340,7 +340,7 @@ services:
     restart: always
     container_name: rabbitmq
     build:
-      context: ./rabbitmq
+      context: ./services/rabbitmq
       args:
         - RABBITMQ_VERSION=${RABBITMQ_VERSION}
     environment:
@@ -360,7 +360,7 @@ services:
     image: envoyproxy/envoy:v1.35.3
     container_name: envoy
     volumes:
-      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+      - ./services/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
     command: ["-c", "/etc/envoy/envoy.yaml"]
     ports:
       - "82:82"
@@ -376,7 +376,7 @@ services:
     restart: always
     container_name: phpfpm82
     build:
-      context: ./php-fpm
+      context: ./services/php-fpm
       args:
         - BASE_IMAGE_TAG_PREFIX=${PHP_FPM_BASE_IMAGE_TAG_PREFIX}
         - LARADOCK_PHP_VERSION=8.2
@@ -398,7 +398,7 @@ services:
         - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
         - LOCALE=${PHP_FPM_DEFAULT_LOCALE}
     volumes:
-      - ./php-fpm/php8.2.ini:/usr/local/etc/php/php.ini
+      - ./services/php-fpm/php8.2.ini:/usr/local/etc/php/php.ini
       - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
     expose:
       - "9000"
@@ -413,7 +413,7 @@ services:
     restart: always
     container_name: phpfpm83
     build:
-      context: ./php-fpm
+      context: ./services/php-fpm
       args:
         - BASE_IMAGE_TAG_PREFIX=${PHP_FPM_BASE_IMAGE_TAG_PREFIX}
         - LARADOCK_PHP_VERSION=8.3
@@ -435,7 +435,7 @@ services:
         - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
         - LOCALE=${PHP_FPM_DEFAULT_LOCALE}
     volumes:
-      - ./php-fpm/php8.3.ini:/usr/local/etc/php/php.ini
+      - ./services/php-fpm/php8.3.ini:/usr/local/etc/php/php.ini
       - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
     expose:
       - "9000"
@@ -450,7 +450,7 @@ services:
     container_name: phpfpm74
     platform: linux/amd64
     build:
-      context: ./php-fpm
+      context: ./services/php-fpm
       args:
         - BASE_IMAGE_TAG_PREFIX=${PHP_FPM_BASE_IMAGE_TAG_PREFIX}
         - LARADOCK_PHP_VERSION=7.4
@@ -472,7 +472,7 @@ services:
         - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
         - LOCALE=${PHP_FPM_DEFAULT_LOCALE}
     volumes:
-      - ./php-fpm/php7.4.ini:/usr/local/etc/php/php.ini
+      - ./services/php-fpm/php7.4.ini:/usr/local/etc/php/php.ini
       - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
     expose:
       - "9000"
@@ -487,7 +487,7 @@ services:
     restart: always
     container_name: nginx
     build:
-      context: ./nginx
+      context: ./services/nginx
     volumes:
       - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
       - ${NGINX_HOST_LOG_PATH}:/var/log/nginx
