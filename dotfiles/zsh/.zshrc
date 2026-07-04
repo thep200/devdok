@@ -3,8 +3,6 @@
 # =====================================================================
 export ZSH="$HOME/.oh-my-zsh"
 export ZLE_RPROMPT_INDENT=0
-
-# Gom toàn bộ PATH về một nơi để dễ quản lý
 export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:$PATH"
 export PATH=~/Projects/env/devdok/bin:$PATH
 export PATH=/Users/thep200/.local/bin:$PATH
@@ -37,6 +35,7 @@ alias athis="source ~/.zshrc"
 alias sthis="cat ~/.zshrc"
 alias crack="xattr -cr"
 alias mm="micromamba"
+alias cbm="codebase-memory-mcp"
 
 # =====================================================================
 # 5. EXTERNAL TOOLS & EVAL

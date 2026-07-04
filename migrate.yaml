@@ -1,0 +1,379 @@
+---
+# =====================================================================
+# migrate.yaml — Ansible playbook to sync the dev environment
+# =====================================================================
+
+- name: Sync dev environment (services + dotfiles)
+  hosts: all
+  gather_facts: true
+
+  vars:
+    # Repo directory (where this playbook lives) and the dotfiles source.
+    repo_dir: "{{ playbook_dir }}"
+    dotfiles_dir: "{{ playbook_dir }}/dotfiles"
+
+    # Neovim configuration: cloned into editors/nvim inside this repo,
+    # then symlinked into place (same "keep in repo, symlink out" pattern
+    # as the dotfiles).
+    nvim_repo: "https://github.com/thep200/nvim-cfg"
+    nvim_src: "{{ repo_dir }}/editors/nvim"
+
+    # macOS GUI apps to install via Homebrew cask, mapped to their .app name
+    # so we can skip download if the app is already present (brew OR manual).
+    macos_casks:
+      - { cask: orbstack, app: "OrbStack.app" }
+      - { cask: ghostty, app: "Ghostty.app" }
+
+    # Home & XDG config paths for Unix (Linux/macOS/WSL).
+    unix_home: "{{ ansible_facts['env']['HOME'] | default('') }}"
+    xdg_config: "{{ ansible_facts['env']['XDG_CONFIG_HOME'] | default(unix_home ~ '/.config') }}"
+
+    # Ghostty config location differs per OS: macOS reads a file literally
+    # named `config` under Application Support (NOT the XDG path by default);
+    # Linux uses the XDG path.
+    ghostty_config_dest: >-
+      {{ (unix_home ~ '/Library/Application Support/com.mitchellh.ghostty/config')
+         if ansible_facts['system'] == 'Darwin'
+         else (xdg_config ~ '/ghostty/config') }}
+
+    # Dotfile -> destination symlink map on Unix.
+    # (Windows native is handled separately; zsh/tmux/ghostty are Unix tools.)
+    dotfiles_links:
+      - { src: "zsh/.zshrc", dest: "{{ unix_home }}/.zshrc" }
+      # tmux 3.x sources BOTH ~/.tmux.conf and $XDG_CONFIG_HOME/tmux/tmux.conf,
+      # the latter LAST (so it wins). Symlink both to the repo, otherwise a
+      # stale real file at either path shadows the repo config.
+      - { src: "tmux/.tmux.conf", dest: "{{ unix_home }}/.tmux.conf" }
+      - { src: "tmux/.tmux.conf", dest: "{{ xdg_config }}/tmux/tmux.conf" }
+      - { src: "ghostty/config", dest: "{{ ghostty_config_dest }}" }
+      # Ghostty resolves `custom-shader = shaders/...` relative to the config
+      # file's directory, so the shaders dir must sit next to the config symlink.
+      - { src: "ghostty/shaders", dest: "{{ ghostty_config_dest | dirname }}/shaders" }
+
+  tasks:
+    # =================================================================
+    # LINUX / WSL — install services via the distro package manager
+    # =================================================================
+    - name: Linux — install services
+      when: ansible_facts['system'] == "Linux"
+      block:
+        - name: (Linux) Detect whether we are running inside WSL
+          ansible.builtin.set_fact:
+            is_wsl: "{{ ('WSL_DISTRO_NAME' in ansible_facts['env']) or ('microsoft' in (ansible_facts['kernel'] | default('') | lower)) }}"
+
+        - name: (Linux) Install base packages (zsh, tmux, neovim, git, curl)
+          become: true
+          ansible.builtin.package:
+            name:
+              - git
+              - curl
+              - zsh
+              - tmux
+              - neovim
+            state: present
+          tags: [zsh, tmux, nvim]
+
+        # On WSL, Docker is provided by Docker Desktop's WSL integration,
+        # so we skip installing the engine and just report it.
+        - name: (WSL) Skip Docker Engine — use Docker Desktop WSL integration
+          ansible.builtin.debug:
+            msg: >-
+              Running under WSL — skipping Docker Engine install.
+              Enable Docker Desktop's WSL integration for this distro instead.
+          when: is_wsl | bool
+          tags: [docker, wsl]
+
+        - name: (Linux) Install Docker Engine via the official script
+          become: true
+          ansible.builtin.shell: |
+            set -e
+            curl -fsSL https://get.docker.com | sh
+          args:
+            creates: /usr/bin/docker
+          when: not (is_wsl | bool)
+          tags: docker
+
+        - name: (Linux) Enable & start the docker service
+          become: true
+          ansible.builtin.service:
+            name: docker
+            state: started
+            enabled: true
+          when: not (is_wsl | bool)
+          failed_when: false
+          tags: docker
+
+        - name: (Linux) Add the current user to the docker group
+          become: true
+          ansible.builtin.user:
+            name: "{{ ansible_facts['user_id'] }}"
+            groups: docker
+            append: true
+          when: not (is_wsl | bool)
+          tags: docker
+
+        - name: (Linux) Ghostty — best-effort install via package manager
+          become: true
+          ansible.builtin.package:
+            name: ghostty
+            state: present
+          register: ghostty_linux
+          failed_when: false
+          tags: ghostty
+
+        - name: (Linux) Warn if Ghostty could not be installed automatically
+          ansible.builtin.debug:
+            msg: >-
+              Could not install Ghostty via this distro's package manager.
+              Install it manually from https://ghostty.org/docs/install then re-run --tags ghostty.
+          when: (ghostty_linux.rc | default(0)) != 0
+          tags: ghostty
+
+    # =================================================================
+    # macOS — install services via Homebrew (Docker = OrbStack)
+    # =================================================================
+    - name: macOS — install services
+      when: ansible_facts['system'] == "Darwin"
+      block:
+        - name: (macOS) Install CLI tools via Homebrew
+          community.general.homebrew:
+            name:
+              - git
+              - zsh
+              - tmux
+              - neovim
+            state: present
+          environment:
+            HOMEBREW_NO_AUTO_UPDATE: "1"
+          tags: [zsh, tmux, nvim]
+
+        # Skip the download entirely if the app already exists — whether it
+        # was installed via brew OR manually dragged into /Applications.
+        - name: (macOS) Detect if OrbStack / Ghostty are already present
+          ansible.builtin.shell: |
+            if [ -d "/Applications/{{ item.app }}" ] \
+               || [ -d "{{ unix_home }}/Applications/{{ item.app }}" ] \
+               || brew list --cask "{{ item.cask }}" >/dev/null 2>&1; then
+              echo present
+            else
+              echo missing
+            fi
+          register: macos_cask_check
+          changed_when: false
+          check_mode: false
+          loop: "{{ macos_casks }}"
+          loop_control:
+            label: "{{ item.cask }}"
+          tags: [docker, ghostty]
+
+        - name: (macOS) Install only the casks that are missing
+          community.general.homebrew_cask:
+            name: "{{ item.item.cask }}"
+            state: present
+          loop: "{{ macos_cask_check.results }}"
+          when: item.stdout == "missing"
+          loop_control:
+            label: "{{ item.item.cask }} ({{ item.stdout }})"
+          environment:
+            HOMEBREW_NO_AUTO_UPDATE: "1"
+          failed_when: false
+          tags: [docker, ghostty]
+
+    # =================================================================
+    # WINDOWS (native) — install services via Chocolatey + set up WSL
+    # =================================================================
+    - name: Windows — install services
+      when: ansible_facts['os_family'] == "Windows"
+      block:
+        - name: (Windows) Install tools via Chocolatey (git, neovim, docker-desktop, terminal)
+          chocolatey.chocolatey.win_chocolatey:
+            name:
+              - git
+              - neovim
+              - docker-desktop
+              - microsoft-windows-terminal
+            state: present
+          tags: [nvim, docker]
+
+        - name: (Windows) Install or update WSL
+          ansible.windows.win_powershell:
+            script: |
+              $ErrorActionPreference = 'Stop'
+              if (Get-Command wsl.exe -ErrorAction SilentlyContinue) {
+                wsl --update
+              } else {
+                wsl --install --no-launch
+              }
+          failed_when: false
+          tags: wsl
+
+        - name: (Windows) Next step for WSL dotfiles
+          ansible.builtin.debug:
+            msg: >-
+              WSL is installed. Open your WSL shell and re-run `make migrate`
+              inside it — the Linux block will symlink dotfiles into your WSL home.
+              zsh/tmux/ghostty are Unix tools and live inside WSL, not Windows native.
+          tags: [wsl, zsh, tmux, ghostty]
+
+    # =================================================================
+    # NVIM — clone into editors/nvim, then symlink it into place
+    # =================================================================
+    - name: (Unix) Set up Neovim config in editors/nvim + symlink
+      when: ansible_facts['system'] in ["Linux", "Darwin"]
+      tags: nvim
+      block:
+        - name: (Unix) Check whether editors/nvim is already a git checkout
+          ansible.builtin.stat:
+            path: "{{ nvim_src }}/.git"
+          register: nvim_src_git
+
+        - name: (Unix) Clone the Neovim config into editors/nvim (only when absent)
+          when: not nvim_src_git.stat.exists
+          ansible.builtin.git:
+            repo: "{{ nvim_repo }}"
+            dest: "{{ nvim_src }}"
+
+        - name: (Unix) Stat the ~/.config/nvim target
+          ansible.builtin.stat:
+            path: "{{ xdg_config }}/nvim"
+          register: nvim_target
+
+        - name: (Unix) Back up an existing real ~/.config/nvim directory
+          when:
+            - nvim_target.stat.exists
+            - not nvim_target.stat.islnk
+          ansible.builtin.command:
+            cmd: mv "{{ xdg_config }}/nvim" "{{ xdg_config }}/nvim.bak-{{ ansible_facts['date_time']['iso8601_basic_short'] }}"
+
+        - name: (Unix) Ensure the config parent directory exists
+          ansible.builtin.file:
+            path: "{{ xdg_config }}"
+            state: directory
+            mode: "0755"
+
+        - name: (Unix) Symlink ~/.config/nvim -> editors/nvim
+          ansible.builtin.file:
+            src: "{{ nvim_src }}"
+            dest: "{{ xdg_config }}/nvim"
+            state: link
+            force: true
+
+    - name: (Windows) Set up Neovim config in editors\nvim + symlink
+      when: ansible_facts['os_family'] == "Windows"
+      ansible.windows.win_powershell:
+        script: |
+          $ErrorActionPreference = 'Stop'
+          $src  = "{{ repo_dir }}\editors\nvim"
+          $dest = "$env:LOCALAPPDATA\nvim"
+          if (-not (Test-Path "$src\.git")) {
+            git clone "{{ nvim_repo }}" $src
+          }
+          if (Test-Path $dest) {
+            $item = Get-Item $dest -Force
+            if ($item.LinkType -eq 'SymbolicLink') {
+              Remove-Item $dest -Force
+            } else {
+              Move-Item $dest "$dest.bak-$(Get-Date -Format yyyyMMddHHmmss)"
+            }
+          }
+          try {
+            New-Item -ItemType SymbolicLink -Path $dest -Target $src -ErrorAction Stop | Out-Null
+          } catch {
+            Write-Warning "Could not create the nvim symlink. Windows needs Administrator rights or Developer Mode enabled for symlinks. Enable Developer Mode (Settings > For developers) or run this play elevated, then re-run --tags nvim."
+          }
+      tags: nvim
+
+    # =================================================================
+    # ZSH — install oh-my-zsh FIRST (with --keep-zshrc) so the dotfiles
+    # symlink below is always the final, winning state for ~/.zshrc.
+    # =================================================================
+    - name: (Unix) Install oh-my-zsh if missing
+      when: ansible_facts['system'] in ["Linux", "Darwin"]
+      ansible.builtin.shell: |
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended --keep-zshrc
+      args:
+        creates: "{{ unix_home }}/.oh-my-zsh"
+      tags: zsh
+
+    # =================================================================
+    # DOTFILES — stat -> back up real files -> symlink (safe pattern,
+    # same "back up to .bak-<timestamp>" behaviour as the nvim block)
+    # =================================================================
+    - name: (Unix) Symlink dotfiles from the repo
+      when: ansible_facts['system'] in ["Linux", "Darwin"]
+      tags: dotfiles
+      block:
+        - name: (Unix) Stat each dotfile destination
+          ansible.builtin.stat:
+            path: "{{ item.dest }}"
+          loop: "{{ dotfiles_links }}"
+          loop_control:
+            label: "{{ item.dest }}"
+          register: dotfiles_stat
+
+        - name: (Unix) Ensure the destination parent directories exist
+          ansible.builtin.file:
+            path: "{{ item.dest | dirname }}"
+            state: directory
+            mode: "0755"
+          loop: "{{ dotfiles_links }}"
+          loop_control:
+            label: "{{ item.dest | dirname }}"
+
+        # Only back up a REAL file/dir (not an existing symlink we made
+        # before). A broken/old symlink is left for `force: true` to replace.
+        - name: (Unix) Back up existing real dotfiles before symlinking
+          when:
+            - item.stat.exists
+            - not item.stat.islnk
+          ansible.builtin.command:
+            cmd: mv "{{ item.item.dest }}" "{{ item.item.dest }}.bak-{{ ansible_facts['date_time']['iso8601_basic_short'] }}"
+          loop: "{{ dotfiles_stat.results }}"
+          loop_control:
+            label: "{{ item.item.dest }}"
+
+        - name: (Unix) Create dotfile symlinks -> {{ dotfiles_dir }}
+          ansible.builtin.file:
+            src: "{{ dotfiles_dir }}/{{ item.src }}"
+            dest: "{{ item.dest }}"
+            state: link
+            force: true
+          loop: "{{ dotfiles_links }}"
+          loop_control:
+            label: "{{ item.src }} -> {{ item.dest }}"
+
+    # =================================================================
+    # ZSH — set zsh as the default shell (Unix/WSL)
+    # =================================================================
+    # Only change the login shell if it isn't already zsh — this skips the
+    # whole thing (and the sudo prompt) on machines where zsh is already the
+    # default. The change itself needs sudo; in a non-interactive `make
+    # migrate` there is no password, so rescue keeps the play going and prints
+    # the manual command instead of aborting.
+    - name: (Unix) Set zsh as the default shell (best-effort)
+      when: ansible_facts['system'] in ["Linux", "Darwin"]
+      tags: zsh
+      block:
+        - name: (Unix) Read the current login shell
+          ansible.builtin.command:
+            cmd: >-
+              {{ ('dscl . -read /Users/' ~ ansible_facts['user_id'] ~ ' UserShell')
+                 if ansible_facts['system'] == 'Darwin'
+                 else ('getent passwd ' ~ ansible_facts['user_id']) }}
+          register: login_shell
+          changed_when: false
+          check_mode: false
+
+        - name: (Unix) Change login shell to zsh
+          when: "'zsh' not in login_shell.stdout"
+          become: true
+          ansible.builtin.user:
+            name: "{{ ansible_facts['user_id'] }}"
+            shell: /bin/zsh
+      rescue:
+        - name: (Unix) Could not change shell without sudo — show manual step
+          ansible.builtin.debug:
+            msg: >-
+              Could not set zsh as the default shell (needs sudo). Run it manually:
+              `chsh -s $(command -v zsh)`  — or re-run with:
+              `ansible-playbook -i 'localhost,' -c local migrate.yaml --tags zsh --ask-become-pass`

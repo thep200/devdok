@@ -2,6 +2,7 @@
 .idea/
 .zed/
 .env
+editors/nvim/
 vitess-root
 .DS_Store
 /logs/nginx/*.log

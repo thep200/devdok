@@ -1,0 +1,185 @@
+.quick-input-widget {
+    top: 20% !important;
+    box-shadow: 0 0 60px 0 rgba(0, 0, 0, 0.2) !important;
+    width: 700px !important;
+    transform: translateX(-40%) !important;
+    left: calc(50% - 50px) !important;
+    border-radius: 10px !important;
+    border: 1.25px solid #4e4e4e !important;
+    animation: widgetFadeIn 0.08s ease-out forwards;
+}
+
+@keyframes widgetFadeIn {
+    from {
+        opacity: 0.5;
+        transform: translateX(-40%) translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-40%) translateY(0);
+    }
+}
+
+@keyframes rowSlideIn {
+    from {
+        opacity: 0.3;
+        transform: translateX(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes rowFadeIn {
+    from {
+        opacity: 0.4;
+        transform: scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes highlightPulse {
+    0% {
+        background-color: transparent;
+    }
+
+    50% {
+        background-color: rgba(100, 150, 255, 0.1);
+    }
+
+    100% {
+        background-color: transparent;
+    }
+}
+
+@keyframes textGlow {
+
+    0%,
+
+    100% {
+        opacity: 0.9;
+        text-shadow: 0 0 0 rgba(255, 255, 255, 1);
+    }
+
+    50% {
+        opacity: 1;
+        text-shadow:
+            0 0 0 rgba(255, 255, 255, 1),
+            0 0 2px rgba(255, 255, 255, 0.4);
+    }
+}
+
+.quick-input-widget .monaco-inputbox {
+    padding: 10px 10px 10px 10px !important;
+    border-radius: 5px !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow:
+        0 0 6px 1px rgba(255, 255, 255, 0.06),
+        0 0 15px 2px rgba(255, 255, 255, 0.03),
+        inset 0 0 8px rgba(255, 255, 255, 0.02);
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.quick-input-widget .monaco-inputbox:focus-within {
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    box-shadow:
+        0 0 8px 2px rgba(255, 255, 255, 0.1),
+        0 0 20px 4px rgba(255, 255, 255, 0.05),
+        inset 0 0 10px rgba(255, 255, 255, 0.03);
+}
+
+.quick-input-widget .quick-input-action {
+    padding-top: 10px !important;
+    font-size: 14px !important;
+}
+
+.quick-input-widget .quick-input-list {
+    background: transparent !important;
+}
+
+.quick-input-widget .quick-input-list .monaco-list {
+    background: transparent !important;
+}
+
+.quick-input-widget .monaco-list-rows {
+    font-size: 13px !important;
+    background: transparent !important;
+}
+
+.quick-input-widget .monaco-list-row {
+    padding: 10px !important;
+    height: auto !important;
+    background: transparent !important;
+    transition: background-color 0.08s ease, transform 0.08s ease;
+}
+
+.quick-input-widget .monaco-list-row .label-name,
+.quick-input-widget .monaco-list-row .monaco-highlighted-label {
+    color: rgba(200, 200, 200, 0.7) !important;
+    transition: color 0.15s ease, text-shadow 0.15s ease;
+}
+
+.quick-input-widget .monaco-list-row.animate-in {
+    animation: rowSlideIn 0.1s ease-out forwards;
+}
+
+.quick-input-widget .monaco-list-row.animate-filter {
+    animation: rowFadeIn 0.08s ease-out forwards;
+}
+
+.quick-input-widget .monaco-list-row.highlight-pulse {
+    animation: highlightPulse 0.2s ease-out forwards;
+}
+
+.quick-input-widget .monaco-list-row:hover,
+.quick-input-widget .monaco-list-row.focused {
+    transform: translateX(3px);
+}
+
+.quick-input-widget .monaco-list-row:hover .label-name,
+.quick-input-widget .monaco-list-row:hover .monaco-highlighted-label,
+.quick-input-widget .monaco-list-row.focused .label-name,
+.quick-input-widget .monaco-list-row.focused .monaco-highlighted-label {
+    color: #fff !important;
+    animation: textGlow 1.5s ease-in-out infinite !important;
+}
+
+.quick-input-widget .quick-input-list-entry {
+    position: relative;
+    padding: 0px 0px 0px 0px;
+}
+
+.quick-input-widget .quick-input-list-entry .codicon[class*=codicon-] {
+    font-size: 16px;
+    transition: transform 0.1s ease;
+}
+
+.quick-input-widget .quick-input-list-entry:hover .codicon[class*=codicon-],
+.quick-input-widget .focused .quick-input-list-entry .codicon[class*=codicon-] {
+    transform: scale(1.1);
+}
+
+.quick-input-widget .quick-input-list .quick-input-list-entry.quick-input-list-separator-border {
+    border-top-width: 0px !important;
+}
+
+.quick-input-widget .quick-input-list .quick-input-list-label-meta .monaco-highlighted-label:before {
+    content: ' 🧚🏻 ';
+}
+
+.quick-input-widget .quick-input-list .quick-input-list-entry .monaco-action-bar.animated.quick-input-list-entry-action-bar {
+    height: unset;
+}
+
+.editor-group-watermark {
+    max-width: 500px !important;
+    padding-left: 1em;
+    padding-right: 1em;
+}
