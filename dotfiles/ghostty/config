@@ -6,7 +6,7 @@ font-family = Monaspace Argon
 # font-family = 0xProto Nerd Font
 # font-family = MonaspiceNe Nerd Font Mono
 theme = Github Dark Default
-# background = #1d1d1d
+background = #1d1d1d
 
 # custom-shader = shaders/cursor_tail.glsl
 custom-shader = shaders/cursor_sweep.glsl
