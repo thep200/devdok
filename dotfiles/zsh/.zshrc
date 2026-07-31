@@ -7,6 +7,7 @@ export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:$PATH"
 export PATH=~/Projects/env/devdok/bin:$PATH
 export PATH=/Users/thep200/.local/bin:$PATH
 export KUBECONFIG=$HOME/.kube/config:$HOME/.kube/config-gapo
+export MAMBA_ROOT_PREFIX=~/micromamba
 
 # =====================================================================
 # 2. ZSH COMPLETIONS FPATH

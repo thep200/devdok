@@ -34,6 +34,8 @@ volumes:
     driver: local
   scylladb_data:
     driver: local
+  seaweedfs_data:
+    driver: local
 
 services:
   # Redis #####################################################
@@ -213,6 +215,54 @@ services:
       timeout: 10s
       retries: 5
       start_period: 40s
+
+  # SeaweedFS #################################################
+  # Single-container "server" mode: master + volume + filer + S3 + WebDAV.
+  # -ip=seaweedfs makes the master advertise the compose service name, so the
+  # filer/S3 gateway can reach the volume server over the internal network.
+  # Reach it from the host through the S3 API (${SEAWEEDFS_S3_PORT}) — the
+  # gateway proxies to the volume server for you.
+  seaweedfs:
+    image: chrislusf/seaweedfs:${SEAWEEDFS_VERSION:-latest}
+    restart: always
+    container_name: seaweedfs
+    command: >
+      server
+      -dir=/data
+      -ip=seaweedfs
+      -master.port=9333
+      -master.volumeSizeLimitMB=${SEAWEEDFS_VOLUME_SIZE_LIMIT_MB:-1024}
+      -volume.port=8080
+      -volume.max=0
+      -filer
+      -filer.port=8888
+      -s3
+      -s3.port=8333
+      -s3.config=/etc/seaweedfs/s3.json
+      -webdav
+      -webdav.port=7333
+      -metricsPort=9325
+    volumes:
+      - seaweedfs_data:/data
+      - ./services/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    ports:
+      - "${SEAWEEDFS_MASTER_PORT:-9333}:9333"   # master HTTP + UI
+      - "${SEAWEEDFS_VOLUME_PORT:-8085}:8080"   # volume HTTP
+      - "${SEAWEEDFS_FILER_PORT:-8888}:8888"    # filer HTTP
+      - "${SEAWEEDFS_S3_PORT:-8333}:8333"       # S3 API
+      - "${SEAWEEDFS_WEBDAV_PORT:-7333}:7333"   # WebDAV
+      - "${SEAWEEDFS_METRICS_PORT:-9325}:9325"  # Prometheus metrics
+    networks:
+      - internal
+      - shared
+    healthcheck:
+      # -ip=seaweedfs binds the master to that hostname's IP, not loopback,
+      # so the check has to use the service name rather than localhost.
+      test: ["CMD", "wget", "-q", "-O", "-", "http://seaweedfs:9333/cluster/status"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   # Kafka ####################################################
   kafka:
