@@ -46,3 +46,4 @@ source $(which util)
 eval "$(forge zsh plugin)"
 eval "$(micromamba shell hook --shell zsh)"
 eval "$(/Users/thep200/.local/bin/mise activate zsh)"
+export DOCKER_DEFAULT_PLATFORM=linux/amd64

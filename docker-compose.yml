@@ -36,6 +36,8 @@ volumes:
     driver: local
   seaweedfs_data:
     driver: local
+  openldap_data:
+    driver: local
 
 services:
   # Redis #####################################################
@@ -263,6 +265,48 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  openldap:
+    image: bitnamilegacy/openldap:${OPENLDAP_VERSION:-2.6.10}
+    restart: always
+    container_name: openldap
+    environment:
+      - LDAP_ROOT=${LDAP_ROOT}
+      - LDAP_ADMIN_USERNAME=${LDAP_ADMIN_USERNAME}
+      - LDAP_ADMIN_PASSWORD=${LDAP_ADMIN_PASSWORD}
+      - LDAP_CUSTOM_LDIF_DIR=/ldifs
+      - LDAP_PORT_NUMBER=1389
+      - LDAP_LDAPS_PORT_NUMBER=1636
+    ports:
+      - "${LDAP_PORT:-389}:1389"
+      - "${LDAPS_PORT:-636}:1636"
+    volumes:
+      - openldap_data:/bitnami/openldap
+      - ./services/ldap/ldifs:/ldifs:ro
+    networks:
+      - internal
+      - shared
+    healthcheck:
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost:1389 -b ${LDAP_ROOT} -D cn=${LDAP_ADMIN_USERNAME},${LDAP_ROOT} -w ${LDAP_ADMIN_PASSWORD} >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  phpldapadmin:
+    image: osixia/phpldapadmin:${PHPLDAPADMIN_VERSION:-0.9.0}
+    restart: always
+    container_name: phpldapadmin
+    environment:
+      - PHPLDAPADMIN_LDAP_HOSTS=openldap
+      - PHPLDAPADMIN_HTTPS=false
+    ports:
+      - "${PHPLDAPADMIN_PORT:-8390}:80"
+    depends_on:
+      - openldap
+    networks:
+      - internal
+      - shared
 
   # Kafka ####################################################
   kafka:

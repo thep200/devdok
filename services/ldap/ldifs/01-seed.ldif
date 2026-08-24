@@ -1,0 +1,30 @@
+# Seed tree for the devdok OpenLDAP server.
+# bitnami imports every *.ldif under LDAP_CUSTOM_LDIF_DIR at first init and
+# SKIPS its own default-tree generation, so this file must include the root
+# dc entry itself. The admin (cn=thep200) is the DB rootdn set from
+# LDAP_ADMIN_* env vars — it is config, not a data entry, so it is not listed
+# here. Passwords are cleartext on purpose: this is a throwaway dev fixture.
+
+dn: dc=devdok,dc=local
+objectClass: dcObject
+objectClass: organization
+o: devdok
+dc: devdok
+
+dn: ou=users,dc=devdok,dc=local
+objectClass: organizationalUnit
+ou: users
+
+dn: cn=user01,ou=users,dc=devdok,dc=local
+objectClass: inetOrgPerson
+cn: user01
+sn: User01
+uid: user01
+userPassword: root
+
+dn: cn=user02,ou=users,dc=devdok,dc=local
+objectClass: inetOrgPerson
+cn: user02
+sn: User02
+uid: user02
+userPassword: root

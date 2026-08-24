@@ -1,0 +1,173 @@
+#!/usr/bin/env bash
+
+# Colors
+BOLD='\033[1m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+# Match a path against one .gitignore pattern.
+# This is the fallback matcher used only when git is not usable — git itself
+# does the job in the normal case. Shell globs let `*` cross `/`, git's don't,
+# so this is an approximation that covers the common patterns.
+function __zipit_match() {
+    local path="$1"
+    local pat="$2"
+    local dir_only=false
+
+    # bash expands an unquoted variable into a live glob inside `case`; zsh does
+    # not unless GLOB_SUBST is set, and would compare "*.log" literally.
+    # localoptions keeps the change inside this function.
+    if [ -n "${ZSH_VERSION:-}" ]; then
+        setopt localoptions globsubst
+    fi
+
+    # "build/" only ever matches a directory, so it must match contents only
+    case "$pat" in
+        */) dir_only=true; pat="${pat%/}" ;;
+    esac
+
+    # A leading slash anchors to the tree root; git also anchors any pattern
+    # that already contains a slash. A bare name matches at any depth.
+    case "$pat" in
+        /*)  pat="${pat#/}"
+             $dir_only && { case "$path" in $pat/*) return 0 ;; esac; return 1; }
+             case "$path" in $pat|$pat/*) return 0 ;; esac ;;
+        */*) $dir_only && { case "$path" in $pat/*) return 0 ;; esac; return 1; }
+             case "$path" in $pat|$pat/*) return 0 ;; esac ;;
+        *)   $dir_only && { case "$path" in $pat/*|*/$pat/*) return 0 ;; esac; return 1; }
+             case "$path" in $pat|$pat/*|*/$pat|*/$pat/*) return 0 ;; esac ;;
+    esac
+
+    return 1
+}
+
+# Zip the current directory into <folder-name>.zip, honouring .gitignore.
+function zipit() {
+    local FORCE=false
+    local OUT=""
+
+    function usage() {
+        echo -e "${BOLD}Usage:${NC} zipit [options]"
+        echo -e "${BOLD}Options:${NC}"
+        echo -e "  ${GREEN}-o <file>${NC}  Output path (default: <current-folder>.zip in the current folder)"
+        echo -e "  ${GREEN}-f${NC}         Overwrite an existing archive without asking"
+        echo -e "  ${GREEN}-h${NC}         Show this help message"
+        echo
+        echo -e "${YELLOW}Notes:${NC}"
+        echo -e "  Files listed in .gitignore are skipped. No .gitignore means everything is zipped."
+        return 0
+    }
+
+    local OPTIND opt
+    while getopts "o:fh" opt; do
+        case "$opt" in
+            o) OUT="$OPTARG" ;;
+            f) FORCE=true ;;
+            h) usage; return 0 ;;
+            \?) echo "Tham số không hợp lệ."; usage; return 1 ;;
+        esac
+    done
+    shift $((OPTIND - 1))
+
+    if ! command -v zip >/dev/null 2>&1; then
+        echo -e "${RED}zip not found.${NC} Install it first (macOS: it ships with the system, Linux: apt install zip)."
+        return 1
+    fi
+
+    local NAME
+    NAME="$(command basename "$PWD")"
+    [ -z "$OUT" ] && OUT="$PWD/$NAME.zip"
+
+    # Overwrite guard — zip appends to an existing archive, so a stale file
+    # would silently mix old and new content.
+    if [ -e "$OUT" ]; then
+        if [ "$FORCE" != true ]; then
+            printf "%b\n" "${YELLOW}$OUT already exists.${NC}"
+            # printf + bare read, because `read -p` means something else in zsh
+            local answer
+            printf "Overwrite it? [y/N] "
+            read -r answer
+            case "$answer" in
+                [yY]|[yY][eE][sS]) ;;
+                *) echo "Aborted."; return 1 ;;
+            esac
+        fi
+        command rm -f "$OUT" || return 1
+    fi
+
+    # Absolute path of the archive, so it can be kept out of its own contents
+    local OUT_ABS="$OUT"
+    case "$OUT_ABS" in /*) ;; *) OUT_ABS="$PWD/${OUT_ABS#./}" ;; esac
+
+    local files=()
+    local f
+
+    if [ ! -f .gitignore ]; then
+        # No .gitignore: zip everything, dotfiles included
+        echo -e "${YELLOW}No .gitignore — archiving everything.${NC}"
+        while IFS= read -r f; do
+            f="${f#./}"
+            [ "$PWD/$f" = "$OUT_ABS" ] && continue
+            files+=("$f")
+        done < <(find . \( -type f -o -type l \) 2>/dev/null)
+    elif git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        # Inside a repo: let git apply the ignore rules. It handles nested
+        # .gitignore files, negations and the global excludes file, which a
+        # hand-rolled matcher would get wrong.
+        while IFS= read -r f; do
+            [ -e "$f" ] || continue   # tracked-but-deleted files
+            [ "$PWD/$f" = "$OUT_ABS" ] && continue
+            files+=("$f")
+        done < <(git ls-files --cached --others --exclude-standard)
+    else
+        # .gitignore exists but git can't be used — parse it ourselves
+        local patterns=(".git/")
+        local line
+        while IFS= read -r line || [ -n "$line" ]; do
+            line="${line%$'\r'}"
+            line="${line#"${line%%[![:space:]]*}"}"
+            line="${line%"${line##*[![:space:]]}"}"
+            [ -z "$line" ] && continue
+            case "$line" in
+                \#*) continue ;;
+                !*)  echo -e "${YELLOW}Skipping unsupported negation:${NC} $line"; continue ;;
+            esac
+            patterns+=("$line")
+        done < .gitignore
+
+        local pat skip
+        while IFS= read -r f; do
+            f="${f#./}"
+            [ "$PWD/$f" = "$OUT_ABS" ] && continue
+            skip=false
+            for pat in "${patterns[@]}"; do
+                if __zipit_match "$f" "$pat"; then skip=true; break; fi
+            done
+            [ "$skip" = true ] && continue
+            files+=("$f")
+        done < <(find . \( -type f -o -type l \) 2>/dev/null)
+    fi
+
+    if [ ${#files[@]} -eq 0 ]; then
+        echo -e "${RED}Nothing to zip in $PWD.${NC}"
+        return 1
+    fi
+
+    # -@ reads one filename per line, so spaces are fine (a newline inside a
+    # filename is not — those are skipped by zip with a warning).
+    if ! printf '%s\n' "${files[@]}" | zip -q -y "$OUT" -@; then
+        echo -e "${RED}zip failed.${NC}"
+        return 1
+    fi
+
+    local size
+    size="$(du -h "$OUT" | cut -f1 | tr -d ' ')"
+    echo -e "${GREEN}${OUT}${NC} — ${#files[@]} files, ${BOLD}${size}${NC}"
+}
+
+# Run directly if script is executed (not sourced)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    zipit "$@"
+fi
