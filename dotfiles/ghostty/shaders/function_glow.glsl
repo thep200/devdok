@@ -1,19 +1,21 @@
 // Hue-keyed glow: only pixels whose hue matches the editor's function color
 // emit a halo, so function/method names glow while the rest of the text
-// stays crisp. Keyed on hue (not exact color) so anti-aliased glyph edges,
+// stays crisp. The glowing text itself is drawn white with a purple halo. Keyed on hue (not exact color) so anti-aliased glyph edges,
 // which are the text color mixed with the gray background, still match.
 
 // --- CONFIGURATION ---
 const float TARGET_HUE = 269.0; // hue of the function color (#d2a8ff), degrees
-const float HUE_RANGE = 12.0; // half-width of the accepted hue window, degrees (narrow: string quotes at hue ~283 must stay out)
+const float HUE_RANGE = 12.0; // half-width of the accepted hue window, degrees
 const float MIN_SAT = 0.12; // rejects gray/white pixels
 const float MIN_VAL = 0.78; // pixels this bright emit at full strength (function text)
 // Dimmer pixels of the same hue (the nvim jump-bump rings, which are the
 // function color blended into the background) emit a weaker glow.
 const float DIM_MIN_VAL = 0.25; // below this nothing emits
 const float DIM_GLOW = 0.3; // strength relative to full; 0.0 turns the ring glow off
-const float RADIUS = 9.0; // halo radius in pixels
-const float INTENSITY = 1.5; // halo strength
+const float RADIUS = 7.0; // halo radius in pixels
+const float INTENSITY = 2.5; // halo strength
+const vec3 GLOW_COLOR = vec3(0.48, 0.36, 1.0); // halo color: blue-violet
+const float TEXT_WHITE = 0.85; // how far glowing text is pushed to white; 0.0 keeps its own color
 const float JITTER = 1.0; // 0.0 disables the per-pixel pattern rotation
 
 // --- CONSTANTS ---
@@ -43,9 +45,9 @@ vec3 rgbToHsv(vec3 c) {
     return vec3(hue, sat, maxC);
 }
 
-// How strongly a pixel emits glow, 0.0 to 1.0
-float emitMask(vec3 color) {
-    vec3 hsv = rgbToHsv(color);
+// x: how strongly a pixel emits glow, 0.0 to 1.0
+// y: 1.0 where the pixel is bright function text (not a dim ring)
+vec2 emitMask(vec3 hsv) {
     float hueDist = abs(hsv.x - TARGET_HUE);
     hueDist = min(hueDist, 360.0 - hueDist);
 
@@ -53,8 +55,8 @@ float emitMask(vec3 color) {
     float satMatch = smoothstep(MIN_SAT, MIN_SAT * 2.0, hsv.y);
     float brightMatch = smoothstep(MIN_VAL - 0.1, MIN_VAL + 0.1, hsv.z);
     float dimMatch = smoothstep(DIM_MIN_VAL - 0.08, DIM_MIN_VAL + 0.08, hsv.z);
-    float valMatch = max(brightMatch, DIM_GLOW * dimMatch);
-    return hueMatch * satMatch * valMatch;
+    float keyed = hueMatch * satMatch;
+    return vec2(keyed * max(brightMatch, DIM_GLOW * dimMatch), keyed * brightMatch);
 }
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
@@ -77,12 +79,17 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         vec3 sampleColor = texture(iChannel0, (fragCoord + offset) * invRes).rgb;
         float falloff = 1.0 - 0.63 * t;
         float weight = falloff * falloff; // cheap stand-in for exp(-2t)
-        glow += sampleColor * emitMask(sampleColor) * weight;
+        vec3 sampleHsv = rgbToHsv(sampleColor);
+        glow += GLOW_COLOR * (sampleHsv.z * emitMask(sampleHsv).x * weight);
         weightSum += weight;
 
         dir = GOLDEN_ROTATION * dir;
     }
     glow /= weightSum;
 
-    fragColor = vec4(base.rgb + glow * INTENSITY, base.a);
+    // Text core: drop the tint, keep the brightness
+    vec3 baseHsv = rgbToHsv(base.rgb);
+    vec3 core = mix(base.rgb, vec3(baseHsv.z), TEXT_WHITE * emitMask(baseHsv).y);
+
+    fragColor = vec4(core + glow * INTENSITY, base.a);
 }
