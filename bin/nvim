@@ -1,0 +1,35 @@
+#!/bin/sh
+# Runs the real nvim with the config that lives in this repo
+# (editors/nvim), so no ~/.config/nvim symlink is needed.
+# An explicit -u or --clean from the caller is left untouched.
+
+self_dir=$(cd "$(dirname "$0")" && pwd -P)
+config="$self_dir/../editors/nvim/init.lua"
+
+# Find the real nvim: first one on PATH that is not this wrapper
+real=""
+old_ifs=$IFS
+IFS=:
+for dir in $PATH; do
+    [ -n "$dir" ] || continue
+    candidate="$dir/nvim"
+    [ -x "$candidate" ] || continue
+    [ "$(cd "$dir" && pwd -P)" = "$self_dir" ] && continue
+    real=$candidate
+    break
+done
+IFS=$old_ifs
+
+if [ -z "$real" ]; then
+    echo "nvim wrapper: no nvim binary found on PATH" >&2
+    exit 127
+fi
+
+for arg in "$@"; do
+    case "$arg" in
+        -u | --clean) exec "$real" "$@" ;;
+        --) break ;;
+    esac
+done
+
+exec "$real" -u "$config" "$@"

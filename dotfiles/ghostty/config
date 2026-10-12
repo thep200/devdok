@@ -8,7 +8,9 @@ background = #1d1d1d
 
 # custom-shader = shaders/cursor_glide.glsl
 # custom-shader = shaders/cursor_tail.glsl
-custom-shader = shaders/cursor_sweep.glsl
+custom-shader = shaders/function_glow.glsl
+# custom-shader = shaders/cursor_sweep.glsl
+# custom-shader = shaders/bloom.glsl
 # custom-shader = shaders/cursor_smear.glsl
 # custom-shader = shaders/cursor_glide.glsl
 # custom-shader = shaders/cursor_warp.glsl

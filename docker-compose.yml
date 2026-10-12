@@ -122,193 +122,186 @@ services:
       - shared
 
   # ClickHouse ################################################
-  clickhouse:
-    container_name: clickhouse
-    restart: always
-    build:
-      context: ./services/database/clickhouse
-      args:
-        - CLICKHOUSE_VERSION=${CLICKHOUSE_VERSION:-latest}
-    ports:
-      - "${CLICKHOUSE_HTTP_PORT:-8123}:8123"
-      - "${CLICKHOUSE_NATIVE_PORT:-9000}:9000"
-    environment:
-      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-default}
-      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
-      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
-      - CLICKHOUSE_PASSWORD_SHA256=${CLICKHOUSE_PASSWORD_SHA256}
-      - CLICKHOUSE_USER_PASSWORD_SHA256=${CLICKHOUSE_USER_PASSWORD_SHA256}
-    volumes:
-      - clickhouse_data:/var/lib/clickhouse
-    networks:
-      - internal
-      - shared
-    ulimits:
-      nofile:
-        soft: 262144
-        hard: 262144
-
-  # Cassandra #################################################
-  cassandra:
-    restart: always
-    container_name: cassandra
-    build:
-      context: ./services/database/cassandra
-      args:
-        - CASSANDRA_VERSION=${CASSANDRA_VERSION:-4.1.3}
-    ports:
-      - "${CASSANDRA_PORT:-9042}:9042"
-      - "${CASSANDRA_INTER_NODE_PORT:-7000}:7000"
-      - "${CASSANDRA_INTER_NODE_SSL_PORT:-7001}:7001"
-      - "${CASSANDRA_JMX_PORT:-7199}:7199"
-      - "${CASSANDRA_THRIFT_PORT:-9160}:9160"
-    environment:
-      - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME:-Test Cluster}
-      - CASSANDRA_SEEDS=${CASSANDRA_SEEDS:-cassandra}
-      - CASSANDRA_DC=${CASSANDRA_DC:-datacenter1}
-      - CASSANDRA_RACK=${CASSANDRA_RACK:-rack1}
-      - CASSANDRA_ENDPOINT_SNITCH=${CASSANDRA_ENDPOINT_SNITCH:-SimpleSnitch}
-      - MAX_HEAP_SIZE=${CASSANDRA_MAX_HEAP_SIZE:-1G}
-      - HEAP_NEWSIZE=${CASSANDRA_HEAP_NEWSIZE:-256M}
-    volumes:
-      - cassandra_data:/var/lib/cassandra
-      - ./services/database/cassandra/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
-    networks:
-      - internal
-      - shared
-    healthcheck:
-      test: ["CMD", "nodetool", "status"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
-
-  # ScyllaDB ##################################################
-  scylladb:
-    restart: always
-    container_name: scylladb
-    build:
-      context: ./services/database/scylladb
-      args:
-        - SCYLLADB_VERSION=${SCYLLADB_VERSION:-5.2.5}
-    ports:
-      - "${SCYLLADB_PORT:-9043}:9042"
-      - "${SCYLLADB_INTER_NODE_PORT:-7010}:7000"
-      - "${SCYLLADB_INTER_NODE_SSL_PORT:-7011}:7001"
-      - "${SCYLLADB_JMX_PORT:-7200}:7199"
-      - "${SCYLLADB_THRIFT_PORT:-9161}:9160"
-      - "${SCYLLADB_METRICS_PORT:-10000}:10000"
-    environment:
-      - SCYLLA_CLUSTER_NAME=${SCYLLA_CLUSTER_NAME:-Test Cluster}
-      - SCYLLA_SEEDS=${SCYLLA_SEEDS:-scylladb}
-      - SCYLLA_DATACENTER=${SCYLLA_DATACENTER:-datacenter1}
-      - SCYLLA_RACK=${SCYLLA_RACK:-rack1}
-      - SCYLLA_DEVELOPER_MODE=${SCYLLA_DEVELOPER_MODE:-true}
-    volumes:
-      - scylladb_data:/var/lib/scylla
-      - ./services/database/scylladb/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
-    networks:
-      - internal
-      - shared
-    healthcheck:
-      test: ["CMD", "nodetool", "status"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
-
-  # SeaweedFS #################################################
-  # Single-container "server" mode: master + volume + filer + S3 + WebDAV.
-  # -ip=seaweedfs makes the master advertise the compose service name, so the
-  # filer/S3 gateway can reach the volume server over the internal network.
-  # Reach it from the host through the S3 API (${SEAWEEDFS_S3_PORT}) — the
-  # gateway proxies to the volume server for you.
-  seaweedfs:
-    image: chrislusf/seaweedfs:${SEAWEEDFS_VERSION:-latest}
-    restart: always
-    container_name: seaweedfs
-    command: >
-      server
-      -dir=/data
-      -ip=seaweedfs
-      -master.port=9333
-      -master.volumeSizeLimitMB=${SEAWEEDFS_VOLUME_SIZE_LIMIT_MB:-1024}
-      -volume.port=8080
-      -volume.max=0
-      -filer
-      -filer.port=8888
-      -s3
-      -s3.port=8333
-      -s3.config=/etc/seaweedfs/s3.json
-      -webdav
-      -webdav.port=7333
-      -metricsPort=9325
-    volumes:
-      - seaweedfs_data:/data
-      - ./services/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
-    ports:
-      - "${SEAWEEDFS_MASTER_PORT:-9333}:9333"   # master HTTP + UI
-      - "${SEAWEEDFS_VOLUME_PORT:-8085}:8080"   # volume HTTP
-      - "${SEAWEEDFS_FILER_PORT:-8888}:8888"    # filer HTTP
-      - "${SEAWEEDFS_S3_PORT:-8333}:8333"       # S3 API
-      - "${SEAWEEDFS_WEBDAV_PORT:-7333}:7333"   # WebDAV
-      - "${SEAWEEDFS_METRICS_PORT:-9325}:9325"  # Prometheus metrics
-    networks:
-      - internal
-      - shared
-    healthcheck:
-      # -ip=seaweedfs binds the master to that hostname's IP, not loopback,
-      # so the check has to use the service name rather than localhost.
-      test: ["CMD", "wget", "-q", "-O", "-", "http://seaweedfs:9333/cluster/status"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-
-  openldap:
-    image: bitnamilegacy/openldap:${OPENLDAP_VERSION:-2.6.10}
-    restart: always
-    container_name: openldap
-    environment:
-      - LDAP_ROOT=${LDAP_ROOT}
-      - LDAP_ADMIN_USERNAME=${LDAP_ADMIN_USERNAME}
-      - LDAP_ADMIN_PASSWORD=${LDAP_ADMIN_PASSWORD}
-      - LDAP_CUSTOM_LDIF_DIR=/ldifs
-      - LDAP_PORT_NUMBER=1389
-      - LDAP_LDAPS_PORT_NUMBER=1636
-    ports:
-      - "${LDAP_PORT:-389}:1389"
-      - "${LDAPS_PORT:-636}:1636"
-    volumes:
-      - openldap_data:/bitnami/openldap
-      - ./services/ldap/ldifs:/ldifs:ro
-    networks:
-      - internal
-      - shared
-    healthcheck:
-      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost:1389 -b ${LDAP_ROOT} -D cn=${LDAP_ADMIN_USERNAME},${LDAP_ROOT} -w ${LDAP_ADMIN_PASSWORD} >/dev/null 2>&1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-
-  phpldapadmin:
-    image: osixia/phpldapadmin:${PHPLDAPADMIN_VERSION:-0.9.0}
-    restart: always
-    container_name: phpldapadmin
-    environment:
-      - PHPLDAPADMIN_LDAP_HOSTS=openldap
-      - PHPLDAPADMIN_HTTPS=false
-    ports:
-      - "${PHPLDAPADMIN_PORT:-8390}:80"
-    depends_on:
-      - openldap
-    networks:
-      - internal
-      - shared
-
-  # Kafka ####################################################
+  # clickhouse:
+  #   container_name: clickhouse
+  #   restart: always
+  #   build:
+  #     context: ./services/database/clickhouse
+  #     args:
+  #       - CLICKHOUSE_VERSION=${CLICKHOUSE_VERSION:-latest}
+  #   ports:
+  #     - "${CLICKHOUSE_HTTP_PORT:-8123}:8123"
+  #     - "${CLICKHOUSE_NATIVE_PORT:-9000}:9000"
+  #   environment:
+  #     - CLICKHOUSE_DB=${CLICKHOUSE_DB:-default}
+  #     - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
+  #     - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+  #     - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+  #     - CLICKHOUSE_PASSWORD_SHA256=${CLICKHOUSE_PASSWORD_SHA256}
+  #     - CLICKHOUSE_USER_PASSWORD_SHA256=${CLICKHOUSE_USER_PASSWORD_SHA256}
+  #   volumes:
+  #     - clickhouse_data:/var/lib/clickhouse
+  #   networks:
+  #     - internal
+  #     - shared
+  #   ulimits:
+  #     nofile:
+  #       soft: 262144
+  #       hard: 262144
+  #
+  # # Cassandra #################################################
+  # cassandra:
+  #   restart: always
+  #   container_name: cassandra
+  #   build:
+  #     context: ./services/database/cassandra
+  #     args:
+  #       - CASSANDRA_VERSION=${CASSANDRA_VERSION:-4.1.3}
+  #   ports:
+  #     - "${CASSANDRA_PORT:-9042}:9042"
+  #     - "${CASSANDRA_INTER_NODE_PORT:-7000}:7000"
+  #     - "${CASSANDRA_INTER_NODE_SSL_PORT:-7001}:7001"
+  #     - "${CASSANDRA_JMX_PORT:-7199}:7199"
+  #     - "${CASSANDRA_THRIFT_PORT:-9160}:9160"
+  #   environment:
+  #     - CASSANDRA_CLUSTER_NAME=${CASSANDRA_CLUSTER_NAME:-Test Cluster}
+  #     - CASSANDRA_SEEDS=${CASSANDRA_SEEDS:-cassandra}
+  #     - CASSANDRA_DC=${CASSANDRA_DC:-datacenter1}
+  #     - CASSANDRA_RACK=${CASSANDRA_RACK:-rack1}
+  #     - CASSANDRA_ENDPOINT_SNITCH=${CASSANDRA_ENDPOINT_SNITCH:-SimpleSnitch}
+  #     - MAX_HEAP_SIZE=${CASSANDRA_MAX_HEAP_SIZE:-1G}
+  #     - HEAP_NEWSIZE=${CASSANDRA_HEAP_NEWSIZE:-256M}
+  #   volumes:
+  #     - cassandra_data:/var/lib/cassandra
+  #     - ./services/database/cassandra/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+  #   networks:
+  #     - internal
+  #     - shared
+  #   healthcheck:
+  #     test: ["CMD", "nodetool", "status"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 40s
+  #
+  # # ScyllaDB ##################################################
+  # scylladb:
+  #   restart: always
+  #   container_name: scylladb
+  #   build:
+  #     context: ./services/database/scylladb
+  #     args:
+  #       - SCYLLADB_VERSION=${SCYLLADB_VERSION:-5.2.5}
+  #   ports:
+  #     - "${SCYLLADB_PORT:-9043}:9042"
+  #     - "${SCYLLADB_INTER_NODE_PORT:-7010}:7000"
+  #     - "${SCYLLADB_INTER_NODE_SSL_PORT:-7011}:7001"
+  #     - "${SCYLLADB_JMX_PORT:-7200}:7199"
+  #     - "${SCYLLADB_THRIFT_PORT:-9161}:9160"
+  #     - "${SCYLLADB_METRICS_PORT:-10000}:10000"
+  #   environment:
+  #     - SCYLLA_CLUSTER_NAME=${SCYLLA_CLUSTER_NAME:-Test Cluster}
+  #     - SCYLLA_SEEDS=${SCYLLA_SEEDS:-scylladb}
+  #     - SCYLLA_DATACENTER=${SCYLLA_DATACENTER:-datacenter1}
+  #     - SCYLLA_RACK=${SCYLLA_RACK:-rack1}
+  #     - SCYLLA_DEVELOPER_MODE=${SCYLLA_DEVELOPER_MODE:-true}
+  #   volumes:
+  #     - scylladb_data:/var/lib/scylla
+  #     - ./services/database/scylladb/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+  #   networks:
+  #     - internal
+  #     - shared
+  #   healthcheck:
+  #     test: ["CMD", "nodetool", "status"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 40s
+  #
+  # # SeaweedFS #################################################
+  # seaweedfs:
+  #   image: chrislusf/seaweedfs:${SEAWEEDFS_VERSION:-latest}
+  #   restart: always
+  #   container_name: seaweedfs
+  #   command: >
+  #     server
+  #     -dir=/data
+  #     -ip=seaweedfs
+  #     -master.port=9333
+  #     -master.volumeSizeLimitMB=${SEAWEEDFS_VOLUME_SIZE_LIMIT_MB:-1024}
+  #     -volume.port=8080
+  #     -volume.max=0
+  #     -filer
+  #     -filer.port=8888
+  #     -s3
+  #     -s3.port=8333
+  #     -s3.config=/etc/seaweedfs/s3.json
+  #     -webdav
+  #     -webdav.port=7333
+  #     -metricsPort=9325
+  #   volumes:
+  #     - seaweedfs_data:/data
+  #     - ./services/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+  #   ports:
+  #     - "${SEAWEEDFS_MASTER_PORT:-9333}:9333"   # master HTTP + UI
+  #     - "${SEAWEEDFS_VOLUME_PORT:-8085}:8080"   # volume HTTP
+  #     - "${SEAWEEDFS_FILER_PORT:-8888}:8888"    # filer HTTP
+  #     - "${SEAWEEDFS_S3_PORT:-8333}:8333"       # S3 API
+  #     - "${SEAWEEDFS_WEBDAV_PORT:-7333}:7333"   # WebDAV
+  #     - "${SEAWEEDFS_METRICS_PORT:-9325}:9325"  # Prometheus metrics
+  #   networks:
+  #     - internal
+  #     - shared
+  #   healthcheck:
+  #     test: ["CMD", "wget", "-q", "-O", "-", "http://seaweedfs:9333/cluster/status"]
+  #     interval: 15s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 20s
+  #
+  # openldap:
+  #   image: bitnamilegacy/openldap:${OPENLDAP_VERSION:-2.6.10}
+  #   restart: always
+  #   container_name: openldap
+  #   environment:
+  #     - LDAP_ROOT=${LDAP_ROOT}
+  #     - LDAP_ADMIN_USERNAME=${LDAP_ADMIN_USERNAME}
+  #     - LDAP_ADMIN_PASSWORD=${LDAP_ADMIN_PASSWORD}
+  #     - LDAP_CUSTOM_LDIF_DIR=/ldifs
+  #     - LDAP_PORT_NUMBER=1389
+  #     - LDAP_LDAPS_PORT_NUMBER=1636
+  #   ports:
+  #     - "${LDAP_PORT:-389}:1389"
+  #     - "${LDAPS_PORT:-636}:1636"
+  #   volumes:
+  #     - openldap_data:/bitnami/openldap
+  #     - ./services/ldap/ldifs:/ldifs:ro
+  #   networks:
+  #     - internal
+  #     - shared
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost:1389 -b ${LDAP_ROOT} -D cn=${LDAP_ADMIN_USERNAME},${LDAP_ROOT} -w ${LDAP_ADMIN_PASSWORD} >/dev/null 2>&1"]
+  #     interval: 15s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 20s
+  #
+  # phpldapadmin:
+  #   image: osixia/phpldapadmin:${PHPLDAPADMIN_VERSION:-0.9.0}
+  #   restart: always
+  #   container_name: phpldapadmin
+  #   environment:
+  #     - PHPLDAPADMIN_LDAP_HOSTS=openldap
+  #     - PHPLDAPADMIN_HTTPS=false
+  #   ports:
+  #     - "${PHPLDAPADMIN_PORT:-8390}:80"
+  #   depends_on:
+  #     - openldap
+  #   networks:
+  #     - internal
+  #     - shared
+  #
+  # # Kafka ####################################################
   kafka:
     image: apache/kafka:${KAFKA_VERSION}
     restart: unless-stopped
@@ -450,148 +443,148 @@ services:
       - shared
 
   # Envoy ###################################################
-  envoy:
-    image: envoyproxy/envoy:v1.35.3
-    container_name: envoy
-    volumes:
-      - ./services/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
-    command: ["-c", "/etc/envoy/envoy.yaml"]
-    ports:
-      - "82:82"
-      - "9901:9901"
-    restart: unless-stopped
-    networks:
-      - envoy
-      - internal
-      - shared
-
-  ### PHP-FPM-8.2 ##############################################
-  php-fpm-82:
-    restart: always
-    container_name: phpfpm82
-    build:
-      context: ./services/php-fpm
-      args:
-        - BASE_IMAGE_TAG_PREFIX=${PHP_FPM_BASE_IMAGE_TAG_PREFIX}
-        - LARADOCK_PHP_VERSION=8.2
-        - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
-        - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
-        - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
-        - INSTALL_BCMATH=${PHP_FPM_INSTALL_BCMATH}
-        - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
-        - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
-        - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
-        - INSTALL_INTL=${PHP_FPM_INSTALL_INTL}
-        - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
-        - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
-        - INSTALL_RDKAFKA=${PHP_FPM_INSTALL_RDKAFKA}
-        - INSTALL_PCNTL=${PHP_FPM_INSTALL_PCNTL}
-        - INSTALL_DNSUTILS=${PHP_FPM_INSTALL_DNSUTILS}
-        - PUID=${PHP_FPM_PUID}
-        - PGID=${PHP_FPM_PGID}
-        - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
-        - LOCALE=${PHP_FPM_DEFAULT_LOCALE}
-    volumes:
-      - ./services/php-fpm/php8.2.ini:/usr/local/etc/php/php.ini
-      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
-    expose:
-      - "9000"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - backend
-      - shared
+  # envoy:
+  #   image: envoyproxy/envoy:v1.35.3
+  #   container_name: envoy
+  #   volumes:
+  #     - ./services/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+  #   command: ["-c", "/etc/envoy/envoy.yaml"]
+  #   ports:
+  #     - "82:82"
+  #     - "9901:9901"
+  #   restart: unless-stopped
+  #   networks:
+  #     - envoy
+  #     - internal
+  #     - shared
+  #
+  # ### PHP-FPM-8.2 ##############################################
+  # php-fpm-82:
+  #   restart: always
+  #   container_name: phpfpm82
+  #   build:
+  #     context: ./services/php-fpm
+  #     args:
+  #       - BASE_IMAGE_TAG_PREFIX=${PHP_FPM_BASE_IMAGE_TAG_PREFIX}
+  #       - LARADOCK_PHP_VERSION=8.2
+  #       - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
+  #       - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
+  #       - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
+  #       - INSTALL_BCMATH=${PHP_FPM_INSTALL_BCMATH}
+  #       - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
+  #       - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
+  #       - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
+  #       - INSTALL_INTL=${PHP_FPM_INSTALL_INTL}
+  #       - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
+  #       - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
+  #       - INSTALL_RDKAFKA=${PHP_FPM_INSTALL_RDKAFKA}
+  #       - INSTALL_PCNTL=${PHP_FPM_INSTALL_PCNTL}
+  #       - INSTALL_DNSUTILS=${PHP_FPM_INSTALL_DNSUTILS}
+  #       - PUID=${PHP_FPM_PUID}
+  #       - PGID=${PHP_FPM_PGID}
+  #       - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
+  #       - LOCALE=${PHP_FPM_DEFAULT_LOCALE}
+  #   volumes:
+  #     - ./services/php-fpm/php8.2.ini:/usr/local/etc/php/php.ini
+  #     - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
+  #   expose:
+  #     - "9000"
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   networks:
+  #     - backend
+  #     - shared
 
   ### PHP-FPM-8.3 ##############################################
-  php-fpm-83:
-    restart: always
-    container_name: phpfpm83
-    build:
-      context: ./services/php-fpm
-      args:
-        - BASE_IMAGE_TAG_PREFIX=${PHP_FPM_BASE_IMAGE_TAG_PREFIX}
-        - LARADOCK_PHP_VERSION=8.3
-        - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
-        - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
-        - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
-        - INSTALL_BCMATH=${PHP_FPM_INSTALL_BCMATH}
-        - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
-        - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
-        - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
-        - INSTALL_INTL=${PHP_FPM_INSTALL_INTL}
-        - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
-        - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
-        - INSTALL_RDKAFKA=${PHP_FPM_INSTALL_RDKAFKA}
-        - INSTALL_PCNTL=${PHP_FPM_INSTALL_PCNTL}
-        - INSTALL_DNSUTILS=${PHP_FPM_INSTALL_DNSUTILS}
-        - PUID=${PHP_FPM_PUID}
-        - PGID=${PHP_FPM_PGID}
-        - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
-        - LOCALE=${PHP_FPM_DEFAULT_LOCALE}
-    volumes:
-      - ./services/php-fpm/php8.3.ini:/usr/local/etc/php/php.ini
-      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
-    expose:
-      - "9000"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - backend
-      - shared
+  # php-fpm-83:
+  #   restart: always
+  #   container_name: phpfpm83
+  #   build:
+  #     context: ./services/php-fpm
+  #     args:
+  #       - BASE_IMAGE_TAG_PREFIX=${PHP_FPM_BASE_IMAGE_TAG_PREFIX}
+  #       - LARADOCK_PHP_VERSION=8.3
+  #       - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
+  #       - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
+  #       - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
+  #       - INSTALL_BCMATH=${PHP_FPM_INSTALL_BCMATH}
+  #       - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
+  #       - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
+  #       - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
+  #       - INSTALL_INTL=${PHP_FPM_INSTALL_INTL}
+  #       - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
+  #       - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
+  #       - INSTALL_RDKAFKA=${PHP_FPM_INSTALL_RDKAFKA}
+  #       - INSTALL_PCNTL=${PHP_FPM_INSTALL_PCNTL}
+  #       - INSTALL_DNSUTILS=${PHP_FPM_INSTALL_DNSUTILS}
+  #       - PUID=${PHP_FPM_PUID}
+  #       - PGID=${PHP_FPM_PGID}
+  #       - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
+  #       - LOCALE=${PHP_FPM_DEFAULT_LOCALE}
+  #   volumes:
+  #     - ./services/php-fpm/php8.3.ini:/usr/local/etc/php/php.ini
+  #     - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
+  #   expose:
+  #     - "9000"
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   networks:
+  #     - backend
+  #     - shared
 
   ### PHP-FPM-7.4 ##############################################
-  php-fpm-74:
-    container_name: phpfpm74
-    platform: linux/amd64
-    build:
-      context: ./services/php-fpm
-      args:
-        - BASE_IMAGE_TAG_PREFIX=${PHP_FPM_BASE_IMAGE_TAG_PREFIX}
-        - LARADOCK_PHP_VERSION=7.4
-        - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
-        - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
-        - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
-        - INSTALL_BCMATH=${PHP_FPM_INSTALL_BCMATH}
-        - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
-        - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
-        - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
-        - INSTALL_INTL=${PHP_FPM_INSTALL_INTL}
-        - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
-        - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
-        - INSTALL_RDKAFKA=${PHP_FPM_INSTALL_RDKAFKA}
-        - INSTALL_PCNTL=${PHP_FPM_INSTALL_PCNTL}
-        - INSTALL_DNSUTILS=${PHP_FPM_INSTALL_DNSUTILS}
-        - PUID=${PHP_FPM_PUID}
-        - PGID=${PHP_FPM_PGID}
-        - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
-        - LOCALE=${PHP_FPM_DEFAULT_LOCALE}
-    volumes:
-      - ./services/php-fpm/php7.4.ini:/usr/local/etc/php/php.ini
-      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
-    expose:
-      - "9000"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - backend
-      - shared
+  # php-fpm-74:
+  #   container_name: phpfpm74
+  #   platform: linux/amd64
+  #   build:
+  #     context: ./services/php-fpm
+  #     args:
+  #       - BASE_IMAGE_TAG_PREFIX=${PHP_FPM_BASE_IMAGE_TAG_PREFIX}
+  #       - LARADOCK_PHP_VERSION=7.4
+  #       - INSTALL_XDEBUG=${PHP_FPM_INSTALL_XDEBUG}
+  #       - XDEBUG_PORT=${PHP_FPM_XDEBUG_PORT}
+  #       - INSTALL_MONGO=${PHP_FPM_INSTALL_MONGO}
+  #       - INSTALL_BCMATH=${PHP_FPM_INSTALL_BCMATH}
+  #       - INSTALL_PHPREDIS=${PHP_FPM_INSTALL_PHPREDIS}
+  #       - INSTALL_OPCACHE=${PHP_FPM_INSTALL_OPCACHE}
+  #       - INSTALL_MYSQLI=${PHP_FPM_INSTALL_MYSQLI}
+  #       - INSTALL_INTL=${PHP_FPM_INSTALL_INTL}
+  #       - INSTALL_IMAGE_OPTIMIZERS=${PHP_FPM_INSTALL_IMAGE_OPTIMIZERS}
+  #       - INSTALL_IMAGEMAGICK=${PHP_FPM_INSTALL_IMAGEMAGICK}
+  #       - INSTALL_RDKAFKA=${PHP_FPM_INSTALL_RDKAFKA}
+  #       - INSTALL_PCNTL=${PHP_FPM_INSTALL_PCNTL}
+  #       - INSTALL_DNSUTILS=${PHP_FPM_INSTALL_DNSUTILS}
+  #       - PUID=${PHP_FPM_PUID}
+  #       - PGID=${PHP_FPM_PGID}
+  #       - IMAGEMAGICK_VERSION=${PHP_FPM_IMAGEMAGICK_VERSION}
+  #       - LOCALE=${PHP_FPM_DEFAULT_LOCALE}
+  #   volumes:
+  #     - ./services/php-fpm/php7.4.ini:/usr/local/etc/php/php.ini
+  #     - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
+  #   expose:
+  #     - "9000"
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   networks:
+  #     - backend
+  #     - shared
 
   ### NGINX Server #########################################
-  nginx:
-    restart: always
-    container_name: nginx
-    build:
-      context: ./services/nginx
-    volumes:
-      - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
-      - ${NGINX_HOST_LOG_PATH}:/var/log/nginx
-      - ${NGINX_SITES_PATH}:/etc/nginx/sites-available
-      - ${NGINX_SSL_PATH}:/etc/nginx/ssl
-    ports:
-      - "${NGINX_HOST_HTTP_PORT}:80"
-      - "${NGINX_HOST_HTTPS_PORT}:443"
-    networks:
-      - backend
-      - shared
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+  # nginx:
+  #   restart: always
+  #   container_name: nginx
+  #   build:
+  #     context: ./services/nginx
+  #   volumes:
+  #     - ${APP_CODE_PATH_HOST}:${APP_CODE_PATH_CONTAINER}
+  #     - ${NGINX_HOST_LOG_PATH}:/var/log/nginx
+  #     - ${NGINX_SITES_PATH}:/etc/nginx/sites-available
+  #     - ${NGINX_SSL_PATH}:/etc/nginx/ssl
+  #   ports:
+  #     - "${NGINX_HOST_HTTP_PORT}:80"
+  #     - "${NGINX_HOST_HTTPS_PORT}:443"
+  #   networks:
+  #     - backend
+  #     - shared
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
